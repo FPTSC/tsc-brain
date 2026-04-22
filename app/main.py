@@ -73,8 +73,8 @@ async def index(_=Depends(_check_auth)):
 
 
 @app.get("/api/status")
-async def status(_=Depends(_check_auth)):
-    return {"doc_count": count()}
+async def status():
+    return {"doc_count": count(), "status": "ok"}
 
 
 @app.post("/api/query")
