@@ -1,0 +1,11 @@
+.env
+*.pyc
+__pycache__/
+.venv/
+venv/
+credentials.json
+token.json
+*.log
+vectorstore/
+processed_ids.json
+processed_docs.json

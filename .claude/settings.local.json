@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python *)",
+      "Bash(pip show *)",
+      "Bash(pip install *)",
+      "Bash(curl -s -H \"Authorization: Bearer 0R4h5RY5MdgCG_6A-NNnJA.u6kJRoGRciD47E7uOi0xl6FU8aDBcO3g6aigm6qWnaU\" \"https://api.fathom.video/v1/calls/597838956\")",
+      "Bash(curl *)",
+      "WebSearch",
+      "WebFetch(domain:developers.fathom.ai)",
+      "WebFetch(domain:api-docs.fathom.global)",
+      "WebFetch(domain:help.fathom.video)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(git --version)",
+      "Bash(git -C /c/Users/petru/TSC-Brain status)",
+      "Bash(git init *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git config *)"
+    ]
+  }
+}

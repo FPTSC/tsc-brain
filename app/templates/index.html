@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TSC Brain</title>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            navy: {
+              950: '#050a15',
+              900: '#080f1e',
+              800: '#0d1929',
+              700: '#112038',
+            },
+            brand: {
+              light: '#38bef8',
+              DEFAULT: '#1a6fd4',
+              dark: '#1252a3',
+            }
+          },
+          fontFamily: {
+            sans: ['Montserrat', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { background-color: #080f1e; }
+
+    .glass {
+      background: rgba(13, 25, 41, 0.85);
+      border: 1px solid rgba(26, 111, 212, 0.2);
+      backdrop-filter: blur(10px);
+    }
+
+    .glow-input:focus {
+      outline: none;
+      border-color: #1a6fd4;
+      box-shadow: 0 0 0 3px rgba(26, 111, 212, 0.2);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #1a6fd4, #1252a3);
+      transition: all 0.2s;
+    }
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #38bef8, #1a6fd4);
+      box-shadow: 0 0 20px rgba(26, 111, 212, 0.4);
+    }
+
+    /* Gradient header line */
+    .header-line {
+      height: 2px;
+      background: linear-gradient(90deg, transparent, #1a6fd4, #38bef8, transparent);
+    }
+
+    /* Prose styles for markdown */
+    .prose-tsc h2 { font-size: 1rem; font-weight: 700; margin: 1.2rem 0 0.5rem; color: #38bef8; }
+    .prose-tsc h3 { font-size: 0.9rem; font-weight: 700; margin: 1rem 0 0.4rem; color: #38bef8; }
+    .prose-tsc ul { list-style: none; padding-left: 0; margin: 0.5rem 0; }
+    .prose-tsc ul li::before { content: "→ "; color: #1a6fd4; font-weight: 700; }
+    .prose-tsc ol { list-style: decimal; padding-left: 1.5rem; margin: 0.5rem 0; }
+    .prose-tsc li { margin: 0.35rem 0; color: #cbd5e1; }
+    .prose-tsc blockquote {
+      border-left: 3px solid #1a6fd4;
+      padding: 0.5rem 1rem;
+      margin: 0.75rem 0;
+      background: rgba(26, 111, 212, 0.08);
+      border-radius: 0 6px 6px 0;
+      color: #94a3b8;
+      font-style: italic;
+    }
+    .prose-tsc p { margin: 0.5rem 0; color: #cbd5e1; line-height: 1.7; }
+    .prose-tsc strong { color: #e2e8f0; font-weight: 700; }
+    .prose-tsc hr { border-color: rgba(26, 111, 212, 0.2); margin: 1rem 0; }
+
+    @media print {
+      body { background: white !important; }
+      .no-print { display: none !important; }
+      .glass { background: white !important; border: 1px solid #ddd !important; }
+      .prose-tsc p, .prose-tsc li { color: #111 !important; }
+      .prose-tsc h2, .prose-tsc h3 { color: #1a6fd4 !important; }
+    }
+
+    /* Spinner */
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner { animation: spin 0.8s linear infinite; }
+  </style>
+</head>
+<body class="font-sans min-h-screen text-slate-200">
+
+  <!-- Background glow -->
+  <div class="fixed inset-0 pointer-events-none" style="background: radial-gradient(ellipse at 20% 20%, rgba(26,111,212,0.07) 0%, transparent 60%), radial-gradient(ellipse at 80% 80%, rgba(56,190,248,0.04) 0%, transparent 60%);"></div>
+
+  <!-- Header -->
+  <header class="no-print sticky top-0 z-50" style="background: rgba(8,15,30,0.95); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(26,111,212,0.15);">
+    <div class="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-4">
+        <img src="/static/logo.png" alt="TSC" class="h-9 w-auto object-contain" />
+        <div>
+          <div class="text-xs font-600 tracking-widest text-brand-light uppercase">Knowledge Base</div>
+          <div id="docCount" class="text-xs text-slate-500 mt-0.5"></div>
+        </div>
+      </div>
+      <button onclick="window.print()" class="no-print flex items-center gap-2 text-xs text-slate-400 hover:text-brand-light border border-slate-700 hover:border-brand px-3 py-2 rounded-lg transition-all">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+        Esporta PDF
+      </button>
+    </div>
+    <div class="header-line"></div>
+  </header>
+
+  <main class="max-w-4xl mx-auto px-6 py-10 relative">
+
+    <!-- Search box -->
+    <div class="no-print glass rounded-2xl p-6 mb-8 shadow-2xl">
+      <label class="block text-xs font-600 tracking-widest uppercase text-brand-light mb-3">Cosa vuoi sapere?</label>
+      <form id="queryForm">
+        <div class="flex gap-3">
+          <input
+            id="questionInput"
+            type="text"
+            placeholder="Es: come gestisco l'obiezione sul prezzo?"
+            class="flex-1 bg-navy-950 border border-slate-700 glow-input rounded-xl px-4 py-3 text-sm text-slate-200 placeholder-slate-600 transition-all"
+            autocomplete="off"
+          />
+          <button
+            type="submit"
+            id="submitBtn"
+            class="btn-primary text-white font-600 px-6 py-3 rounded-xl text-sm disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Cerca
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Loading -->
+    <div id="loading" class="hidden text-center py-16">
+      <div class="inline-flex flex-col items-center gap-3">
+        <div class="w-8 h-8 rounded-full border-2 border-brand border-t-transparent spinner"></div>
+        <p class="text-sm text-slate-500">Ricerca nella knowledge base...</p>
+      </div>
+    </div>
+
+    <!-- Result -->
+    <div id="result" class="hidden">
+      <div class="glass rounded-2xl p-7 mb-5 shadow-2xl">
+        <div id="answerContent" class="prose-tsc text-sm leading-relaxed"></div>
+      </div>
+
+      <!-- Sources -->
+      <div id="sourcesSection" class="hidden no-print">
+        <p class="text-xs font-600 uppercase tracking-widest text-slate-500 mb-3">Fonti utilizzate</p>
+        <div id="sourcesList" class="flex flex-wrap gap-2"></div>
+      </div>
+    </div>
+
+    <!-- Error -->
+    <div id="errorBox" class="hidden glass border-red-500/30 text-red-400 rounded-xl px-5 py-4 text-sm"></div>
+
+    <!-- Empty state -->
+    <div id="emptyState" class="text-center py-24 text-slate-600">
+      <div class="text-5xl mb-4">⚡</div>
+      <p class="text-sm">Fai una domanda per consultare la knowledge base di Federico.</p>
+    </div>
+
+  </main>
+
+  <script>
+    const form = document.getElementById('queryForm');
+    const input = document.getElementById('questionInput');
+    const submitBtn = document.getElementById('submitBtn');
+    const loading = document.getElementById('loading');
+    const result = document.getElementById('result');
+    const answerContent = document.getElementById('answerContent');
+    const sourcesSection = document.getElementById('sourcesSection');
+    const sourcesList = document.getElementById('sourcesList');
+    const errorBox = document.getElementById('errorBox');
+    const emptyState = document.getElementById('emptyState');
+
+    // Load doc count
+    fetch('/api/status').then(r => r.json()).then(d => {
+      document.getElementById('docCount').textContent = d.doc_count + ' sessioni indicizzate';
+    });
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const question = input.value.trim();
+      if (!question) return;
+
+      result.classList.add('hidden');
+      errorBox.classList.add('hidden');
+      emptyState.classList.add('hidden');
+      loading.classList.remove('hidden');
+      submitBtn.disabled = true;
+
+      try {
+        const formData = new FormData();
+        formData.append('question', question);
+        const resp = await fetch('/api/query', { method: 'POST', body: formData });
+        const data = await resp.json();
+
+        if (data.error) {
+          errorBox.textContent = data.error;
+          errorBox.classList.remove('hidden');
+        } else {
+          answerContent.innerHTML = marked.parse(data.answer);
+          result.classList.remove('hidden');
+
+          sourcesList.innerHTML = '';
+          if (data.sources && data.sources.length > 0) {
+            data.sources.forEach(s => {
+              const a = document.createElement('a');
+              a.href = s.url || '#';
+              a.target = '_blank';
+              a.textContent = s.titolo;
+              a.className = 'text-xs bg-navy-800 text-brand-light border border-brand/30 rounded-full px-3 py-1.5 hover:border-brand transition-all truncate max-w-xs';
+              sourcesList.appendChild(a);
+            });
+            sourcesSection.classList.remove('hidden');
+          } else {
+            sourcesSection.classList.add('hidden');
+          }
+        }
+      } catch (err) {
+        errorBox.textContent = 'Errore di connessione. Riprova.';
+        errorBox.classList.remove('hidden');
+      } finally {
+        loading.classList.add('hidden');
+        submitBtn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
