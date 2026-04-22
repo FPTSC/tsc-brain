@@ -21,6 +21,22 @@ PORT = int(os.environ.get("PORT", 9001))
 
 app = FastAPI(title="TSC Brain")
 app.mount("/static", StaticFiles(directory=str(Path(__file__).parent / "static")), name="static")
+
+
+@app.on_event("startup")
+async def startup_event():
+    import asyncio
+    asyncio.create_task(_rebuild_index_async())
+
+
+async def _rebuild_index_async():
+    import asyncio
+    await asyncio.sleep(2)
+    try:
+        import subprocess, sys
+        subprocess.Popen([sys.executable, "scripts/rebuild_index.py"])
+    except Exception as e:
+        pass
 security = HTTPBasic()
 _claude = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
