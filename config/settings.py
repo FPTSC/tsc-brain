@@ -9,6 +9,8 @@ CLAUDE_MODEL = "claude-sonnet-4-6"
 FATHOM_API_KEY = os.environ["FATHOM_API_KEY"]
 FATHOM_BASE_URL = "https://api.fathom.ai/external/v1"
 
+VOYAGE_API_KEY = os.environ["VOYAGE_API_KEY"]
+
 NOTION_TOKEN = os.environ["NOTION_TOKEN"]
 NOTION_DATABASE_ID = os.environ["NOTION_DATABASE_ID"]
 
