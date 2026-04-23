@@ -1,3 +1,4 @@
+import asyncio
 import os
 import sys
 from pathlib import Path
@@ -26,16 +27,19 @@ app.mount("/static", StaticFiles(directory=str(Path(__file__).parent / "static")
 @app.on_event("startup")
 async def startup_event():
     import asyncio
-    asyncio.create_task(_rebuild_index_async())
+    asyncio.create_task(_init_background())
 
 
-async def _rebuild_index_async():
+async def _init_background():
     import asyncio
-    await asyncio.sleep(2)
+    # Pre-warm ChromaDB in a thread so it doesn't block the event loop
+    await asyncio.to_thread(count)
     try:
         import subprocess, sys
-        subprocess.Popen([sys.executable, "scripts/rebuild_index.py"])
-    except Exception as e:
+        subprocess.Popen(
+            [sys.executable, str(Path(__file__).parent.parent / "scripts" / "rebuild_index.py")]
+        )
+    except Exception:
         pass
 security = HTTPBasic()
 _claude = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
@@ -74,7 +78,11 @@ async def index(_=Depends(_check_auth)):
 
 @app.get("/api/status")
 async def status():
-    return {"doc_count": count(), "status": "ok"}
+    try:
+        doc_count = await asyncio.to_thread(count)
+    except Exception:
+        doc_count = 0
+    return {"doc_count": doc_count, "status": "ok"}
 
 
 @app.post("/api/query")
