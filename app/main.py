@@ -113,7 +113,8 @@ async def status():
 
 
 @app.post("/api/query")
-async def query(request: Request, question: str = Form(...), _=Depends(_check_auth)):
+async def query(request: Request, question: str = Form(...), history: str = Form("[]"), _=Depends(_check_auth)):
+    import json
     if not question.strip():
         return JSONResponse({"error": "Domanda vuota"}, status_code=400)
 
@@ -121,7 +122,7 @@ async def query(request: Request, question: str = Form(...), _=Depends(_check_au
 
     if not results:
         return JSONResponse({
-            "answer": "Il database è vuoto o non è stato ancora indicizzato. Esegui `python scripts/rebuild_index.py`.",
+            "answer": "Il database è vuoto o non è stato ancora indicizzato.",
             "sources": [],
         })
 
@@ -130,14 +131,26 @@ async def query(request: Request, question: str = Form(...), _=Depends(_check_au
         for r in results
     )
 
+    try:
+        conv_history = json.loads(history)
+    except Exception:
+        conv_history = []
+
+    messages = [
+        {"role": m["role"], "content": m["content"]}
+        for m in conv_history
+        if m.get("role") in ("user", "assistant")
+    ]
+    messages.append({
+        "role": "user",
+        "content": f"MATERIALE DALLA KNOWLEDGE BASE:\n\n{context}\n\n---\n\nDOMANDA: {question}",
+    })
+
     message = _claude.messages.create(
         model=CLAUDE_MODEL,
         max_tokens=2048,
         system=SYSTEM_PROMPT,
-        messages=[{
-            "role": "user",
-            "content": f"MATERIALE DALLA KNOWLEDGE BASE:\n\n{context}\n\n---\n\nDOMANDA: {question}",
-        }],
+        messages=messages,
     )
 
     sources = [

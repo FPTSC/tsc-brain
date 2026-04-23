@@ -12,56 +12,38 @@
       theme: {
         extend: {
           colors: {
-            navy: {
-              950: '#050a15',
-              900: '#080f1e',
-              800: '#0d1929',
-              700: '#112038',
-            },
-            brand: {
-              light: '#38bef8',
-              DEFAULT: '#1a6fd4',
-              dark: '#1252a3',
-            }
+            navy: { 950: '#050a15', 900: '#080f1e', 800: '#0d1929', 700: '#112038' },
+            brand: { light: '#38bef8', DEFAULT: '#1a6fd4', dark: '#1252a3' }
           },
-          fontFamily: {
-            sans: ['Montserrat', 'sans-serif'],
-          }
+          fontFamily: { sans: ['Montserrat', 'sans-serif'] }
         }
       }
     }
   </script>
   <style>
     body { background-color: #080f1e; }
-
     .glass {
       background: rgba(13, 25, 41, 0.85);
       border: 1px solid rgba(26, 111, 212, 0.2);
       backdrop-filter: blur(10px);
     }
-
     .glow-input:focus {
       outline: none;
       border-color: #1a6fd4;
       box-shadow: 0 0 0 3px rgba(26, 111, 212, 0.2);
     }
-
-    .btn-primary {
+    .btn-send {
       background: linear-gradient(135deg, #1a6fd4, #1252a3);
       transition: all 0.2s;
     }
-    .btn-primary:hover {
+    .btn-send:hover:not(:disabled) {
       background: linear-gradient(135deg, #38bef8, #1a6fd4);
       box-shadow: 0 0 20px rgba(26, 111, 212, 0.4);
     }
-
-    /* Gradient header line */
     .header-line {
       height: 2px;
       background: linear-gradient(90deg, transparent, #1a6fd4, #38bef8, transparent);
     }
-
-    /* Prose styles for markdown */
     .prose-tsc h2 { font-size: 1rem; font-weight: 700; margin: 1.2rem 0 0.5rem; color: #38bef8; }
     .prose-tsc h3 { font-size: 0.9rem; font-weight: 700; margin: 1rem 0 0.4rem; color: #38bef8; }
     .prose-tsc ul { list-style: none; padding-left: 0; margin: 0.5rem 0; }
@@ -80,162 +62,184 @@
     .prose-tsc p { margin: 0.5rem 0; color: #cbd5e1; line-height: 1.7; }
     .prose-tsc strong { color: #e2e8f0; font-weight: 700; }
     .prose-tsc hr { border-color: rgba(26, 111, 212, 0.2); margin: 1rem 0; }
-
-    @media print {
-      body { background: white !important; }
-      .no-print { display: none !important; }
-      .glass { background: white !important; border: 1px solid #ddd !important; }
-      .prose-tsc p, .prose-tsc li { color: #111 !important; }
-      .prose-tsc h2, .prose-tsc h3 { color: #1a6fd4 !important; }
+    @keyframes dot-pulse {
+      0%, 100% { opacity: 0.2; transform: scale(0.8); }
+      50% { opacity: 1; transform: scale(1); }
     }
-
-    /* Spinner */
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .spinner { animation: spin 0.8s linear infinite; }
+    .dot-1 { animation: dot-pulse 1.2s ease-in-out infinite; }
+    .dot-2 { animation: dot-pulse 1.2s ease-in-out 0.4s infinite; }
+    .dot-3 { animation: dot-pulse 1.2s ease-in-out 0.8s infinite; }
   </style>
 </head>
-<body class="font-sans min-h-screen text-slate-200">
+<body class="font-sans h-screen flex flex-col text-slate-200 overflow-hidden">
 
-  <!-- Background glow -->
   <div class="fixed inset-0 pointer-events-none" style="background: radial-gradient(ellipse at 20% 20%, rgba(26,111,212,0.07) 0%, transparent 60%), radial-gradient(ellipse at 80% 80%, rgba(56,190,248,0.04) 0%, transparent 60%);"></div>
 
   <!-- Header -->
-  <header class="no-print sticky top-0 z-50" style="background: rgba(8,15,30,0.95); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(26,111,212,0.15);">
-    <div class="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
+  <header class="flex-none z-50" style="background: rgba(8,15,30,0.95); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(26,111,212,0.15);">
+    <div class="max-w-3xl mx-auto px-6 py-4 flex items-center justify-between">
       <div class="flex items-center gap-4">
         <img src="/static/logo.png" alt="TSC" class="h-9 w-auto object-contain" />
         <div>
-          <div class="text-xs font-600 tracking-widest text-brand-light uppercase">Knowledge Base</div>
+          <div class="text-xs font-semibold tracking-widest text-brand-light uppercase">Knowledge Base</div>
           <div id="docCount" class="text-xs text-slate-500 mt-0.5"></div>
         </div>
       </div>
-      <button onclick="window.print()" class="no-print flex items-center gap-2 text-xs text-slate-400 hover:text-brand-light border border-slate-700 hover:border-brand px-3 py-2 rounded-lg transition-all">
-        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
-        Esporta PDF
+      <button onclick="clearChat()" class="flex items-center gap-2 text-xs text-slate-400 hover:text-brand-light border border-slate-700 hover:border-brand px-3 py-2 rounded-lg transition-all">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+        Nuova chat
       </button>
     </div>
     <div class="header-line"></div>
   </header>
 
-  <main class="max-w-4xl mx-auto px-6 py-10 relative">
+  <!-- Messages -->
+  <main id="chatMain" class="flex-1 overflow-y-auto">
+    <div id="chatMessages" class="max-w-3xl mx-auto px-6 py-8 space-y-5">
+      <div id="emptyState" class="flex flex-col items-center justify-center py-28 text-slate-600">
+        <div class="text-5xl mb-5">⚡</div>
+        <p class="text-sm text-center leading-relaxed">Chiedimi qualcosa sulla knowledge base di TSC.<br>Tecniche di vendita, procedure, sessioni di coaching.</p>
+      </div>
+    </div>
+  </main>
 
-    <!-- Search box -->
-    <div class="no-print glass rounded-2xl p-6 mb-8 shadow-2xl">
-      <label class="block text-xs font-600 tracking-widest uppercase text-brand-light mb-3">Cosa vuoi sapere?</label>
+  <!-- Input -->
+  <div class="flex-none z-50" style="background: rgba(8,15,30,0.95); backdrop-filter: blur(12px); border-top: 1px solid rgba(26,111,212,0.15);">
+    <div class="max-w-3xl mx-auto px-6 py-4">
       <form id="queryForm">
-        <div class="flex gap-3">
+        <div class="flex gap-3 items-end">
           <input
             id="questionInput"
             type="text"
-            placeholder="Es: come gestisco l'obiezione sul prezzo?"
+            placeholder="Scrivi un messaggio..."
             class="flex-1 bg-navy-950 border border-slate-700 glow-input rounded-xl px-4 py-3 text-sm text-slate-200 placeholder-slate-600 transition-all"
             autocomplete="off"
           />
-          <button
-            type="submit"
-            id="submitBtn"
-            class="btn-primary text-white font-600 px-6 py-3 rounded-xl text-sm disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            Cerca
+          <button type="submit" id="submitBtn"
+            class="btn-send text-white px-4 py-3 rounded-xl disabled:opacity-40 disabled:cursor-not-allowed flex-none">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
           </button>
         </div>
       </form>
     </div>
-
-    <!-- Loading -->
-    <div id="loading" class="hidden text-center py-16">
-      <div class="inline-flex flex-col items-center gap-3">
-        <div class="w-8 h-8 rounded-full border-2 border-brand border-t-transparent spinner"></div>
-        <p class="text-sm text-slate-500">Ricerca nella knowledge base...</p>
-      </div>
-    </div>
-
-    <!-- Result -->
-    <div id="result" class="hidden">
-      <div class="glass rounded-2xl p-7 mb-5 shadow-2xl">
-        <div id="answerContent" class="prose-tsc text-sm leading-relaxed"></div>
-      </div>
-
-      <!-- Sources -->
-      <div id="sourcesSection" class="hidden no-print">
-        <p class="text-xs font-600 uppercase tracking-widest text-slate-500 mb-3">Fonti utilizzate</p>
-        <div id="sourcesList" class="flex flex-wrap gap-2"></div>
-      </div>
-    </div>
-
-    <!-- Error -->
-    <div id="errorBox" class="hidden glass border-red-500/30 text-red-400 rounded-xl px-5 py-4 text-sm"></div>
-
-    <!-- Empty state -->
-    <div id="emptyState" class="text-center py-24 text-slate-600">
-      <div class="text-5xl mb-4">⚡</div>
-      <p class="text-sm">Fai una domanda per consultare la knowledge base di Federico.</p>
-    </div>
-
-  </main>
+  </div>
 
   <script>
     const form = document.getElementById('queryForm');
     const input = document.getElementById('questionInput');
     const submitBtn = document.getElementById('submitBtn');
-    const loading = document.getElementById('loading');
-    const result = document.getElementById('result');
-    const answerContent = document.getElementById('answerContent');
-    const sourcesSection = document.getElementById('sourcesSection');
-    const sourcesList = document.getElementById('sourcesList');
-    const errorBox = document.getElementById('errorBox');
+    const chatMessages = document.getElementById('chatMessages');
     const emptyState = document.getElementById('emptyState');
+    const chatMain = document.getElementById('chatMain');
 
-    // Load doc count
+    let history = [];
+
     fetch('/api/status').then(r => r.json()).then(d => {
       document.getElementById('docCount').textContent = d.doc_count + ' sessioni indicizzate';
     });
+
+    function scrollToBottom() {
+      chatMain.scrollTop = chatMain.scrollHeight;
+    }
+
+    function esc(t) {
+      return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    function addUserBubble(text) {
+      emptyState.style.display = 'none';
+      const d = document.createElement('div');
+      d.className = 'flex justify-end';
+      d.innerHTML = `<div class="max-w-md bg-brand rounded-2xl rounded-tr-sm px-4 py-3 text-sm text-white shadow-lg">${esc(text)}</div>`;
+      chatMessages.appendChild(d);
+      scrollToBottom();
+    }
+
+    function addTypingIndicator() {
+      const d = document.createElement('div');
+      d.id = 'typingIndicator';
+      d.className = 'flex justify-start';
+      d.innerHTML = `
+        <div class="glass rounded-2xl rounded-tl-sm px-5 py-4 shadow-xl">
+          <div class="flex gap-1.5 items-center h-4">
+            <div class="w-2 h-2 rounded-full bg-brand-light dot-1"></div>
+            <div class="w-2 h-2 rounded-full bg-brand-light dot-2"></div>
+            <div class="w-2 h-2 rounded-full bg-brand-light dot-3"></div>
+          </div>
+        </div>`;
+      chatMessages.appendChild(d);
+      scrollToBottom();
+    }
+
+    function removeTypingIndicator() {
+      const el = document.getElementById('typingIndicator');
+      if (el) el.remove();
+    }
+
+    function addAIBubble(text, sources) {
+      let sourcesHtml = '';
+      if (sources && sources.length > 0) {
+        const links = sources.map(s =>
+          `<a href="${s.url||'#'}" target="_blank" class="text-xs bg-navy-800 text-brand-light border border-brand/30 rounded-full px-3 py-1 hover:border-brand transition-all truncate max-w-xs">${esc(s.titolo)}</a>`
+        ).join('');
+        sourcesHtml = `<div class="mt-3 pt-3 border-t border-brand/10"><p class="text-xs text-slate-600 uppercase tracking-widest mb-2 font-semibold">Fonti</p><div class="flex flex-wrap gap-2">${links}</div></div>`;
+      }
+      const d = document.createElement('div');
+      d.className = 'flex justify-start';
+      d.innerHTML = `
+        <div class="glass rounded-2xl rounded-tl-sm px-5 py-4 text-sm shadow-xl" style="max-width:90%">
+          <div class="prose-tsc leading-relaxed">${marked.parse(text)}</div>
+          ${sourcesHtml}
+        </div>`;
+      chatMessages.appendChild(d);
+      scrollToBottom();
+    }
+
+    function addErrorBubble(text) {
+      const d = document.createElement('div');
+      d.className = 'flex justify-start';
+      d.innerHTML = `<div class="glass border-red-500/30 rounded-2xl rounded-tl-sm px-4 py-3 text-sm text-red-400 shadow-xl">${esc(text)}</div>`;
+      chatMessages.appendChild(d);
+      scrollToBottom();
+    }
+
+    function clearChat() {
+      history = [];
+      chatMessages.innerHTML = '';
+      chatMessages.appendChild(emptyState);
+      emptyState.style.display = '';
+    }
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const question = input.value.trim();
       if (!question) return;
 
-      result.classList.add('hidden');
-      errorBox.classList.add('hidden');
-      emptyState.classList.add('hidden');
-      loading.classList.remove('hidden');
+      input.value = '';
       submitBtn.disabled = true;
+      addUserBubble(question);
+      addTypingIndicator();
 
       try {
-        const formData = new FormData();
-        formData.append('question', question);
-        const resp = await fetch('/api/query', { method: 'POST', body: formData });
+        const fd = new FormData();
+        fd.append('question', question);
+        fd.append('history', JSON.stringify(history));
+        const resp = await fetch('/api/query', { method: 'POST', body: fd });
         const data = await resp.json();
-
+        removeTypingIndicator();
         if (data.error) {
-          errorBox.textContent = data.error;
-          errorBox.classList.remove('hidden');
+          addErrorBubble(data.error);
         } else {
-          answerContent.innerHTML = marked.parse(data.answer);
-          result.classList.remove('hidden');
-
-          sourcesList.innerHTML = '';
-          if (data.sources && data.sources.length > 0) {
-            data.sources.forEach(s => {
-              const a = document.createElement('a');
-              a.href = s.url || '#';
-              a.target = '_blank';
-              a.textContent = s.titolo;
-              a.className = 'text-xs bg-navy-800 text-brand-light border border-brand/30 rounded-full px-3 py-1.5 hover:border-brand transition-all truncate max-w-xs';
-              sourcesList.appendChild(a);
-            });
-            sourcesSection.classList.remove('hidden');
-          } else {
-            sourcesSection.classList.add('hidden');
-          }
+          addAIBubble(data.answer, data.sources);
+          history.push({ role: 'user', content: question });
+          history.push({ role: 'assistant', content: data.answer });
         }
-      } catch (err) {
-        errorBox.textContent = 'Errore di connessione. Riprova.';
-        errorBox.classList.remove('hidden');
+      } catch {
+        removeTypingIndicator();
+        addErrorBubble('Errore di connessione. Riprova.');
       } finally {
-        loading.classList.add('hidden');
         submitBtn.disabled = false;
+        input.focus();
       }
     });
   </script>
