@@ -23,21 +23,30 @@ PORT = int(os.environ.get("PORT", 9001))
 app = FastAPI(title="TSC Brain")
 app.mount("/static", StaticFiles(directory=str(Path(__file__).parent / "static")), name="static")
 
+_bg_tasks: set = set()
+
 
 @app.on_event("startup")
 async def startup_event():
-    import asyncio
-    asyncio.create_task(_init_background())
+    task = asyncio.create_task(_init_background())
+    _bg_tasks.add(task)
+    task.add_done_callback(_bg_tasks.discard)
 
 
 async def _init_background():
     import importlib.util
-    import logging
-    _log = logging.getLogger("rebuild")
 
-    await asyncio.to_thread(count)  # pre-warm ChromaDB
+    print("[rebuild] background task started", flush=True)
+
+    try:
+        await asyncio.to_thread(count)
+        print("[rebuild] chromadb ok", flush=True)
+    except Exception as e:
+        print(f"[rebuild] chromadb pre-warm failed: {e}", flush=True)
 
     def _run_rebuild():
+        import traceback
+        print("[rebuild] starting rebuild...", flush=True)
         try:
             spec = importlib.util.spec_from_file_location(
                 "rebuild_index",
@@ -46,10 +55,13 @@ async def _init_background():
             mod = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(mod)
             mod.run()
+            print("[rebuild] done", flush=True)
         except Exception as exc:
-            _log.error(f"rebuild_index failed: {exc}", exc_info=True)
+            print(f"[rebuild] FAILED: {exc}", flush=True)
+            traceback.print_exc()
 
     await asyncio.to_thread(_run_rebuild)
+    print("[rebuild] background task complete", flush=True)
 security = HTTPBasic()
 _claude = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
