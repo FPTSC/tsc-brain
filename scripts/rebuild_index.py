@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 from notion_client import Client
 from config.settings import NOTION_TOKEN, NOTION_DATABASE_ID
-from src.vectorstore.client import index_page, count
+from src.vectorstore.client import index_pages_batch, count
 
 _notion = Client(auth=NOTION_TOKEN)
 
@@ -82,8 +82,9 @@ def run():
             break
         cursor = resp["next_cursor"]
 
-    logger.info(f"Trovate {len(pages)} pagine. Indicizzazione in corso...")
+    logger.info(f"Trovate {len(pages)} pagine. Lettura contenuti...")
 
+    batch = []
     for page in pages:
         props = page["properties"]
         title_rt = props.get("Titolo", {}).get("title", [])
@@ -98,9 +99,11 @@ def run():
             "tipo_sessione": tipo,
             "url": page.get("url", ""),
         }
-        index_page(page["id"], text, metadata)
+        batch.append((page["id"], text, metadata))
         logger.info(f"  ✓ {titolo or page['id']}")
 
+    logger.info(f"Invio batch a Voyage AI ({len(batch)} documenti)...")
+    index_pages_batch(batch)
     logger.info(f"\nDone. Totale vettori nel database: {count()}")
 
 

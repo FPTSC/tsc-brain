@@ -63,6 +63,18 @@ def index_page(page_id: str, text: str, metadata: dict) -> None:
     logger.debug(f"Indicizzato: {metadata.get('titolo', page_id)}")
 
 
+def index_pages_batch(pages: list) -> None:
+    """pages: list of (page_id, text, metadata) — single Voyage AI call for all."""
+    if not _CHROMADB_OK or not _VOYAGE_OK or not pages:
+        return
+    ids = [p[0] for p in pages]
+    texts = [p[1] for p in pages]
+    metadatas = [p[2] for p in pages]
+    embeddings = _embed(texts)
+    _get_collection().upsert(ids=ids, embeddings=embeddings, documents=texts, metadatas=metadatas)
+    logger.info(f"Batch indicizzato: {len(pages)} documenti")
+
+
 def search(query: str, n_results: int = 5) -> list[dict]:
     if not _CHROMADB_OK or not _VOYAGE_OK:
         return []
