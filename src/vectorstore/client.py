@@ -15,13 +15,17 @@ except Exception as e:
     logging.warning(f"voyageai not available: {e}")
     _VOYAGE_OK = False
 
+import os
 from config.settings import VOYAGE_API_KEY
 
 logger = logging.getLogger(__name__)
 
 _COLLECTION_NAME = "tsc_brain"
 _MODEL_NAME = "voyage-3-lite"
-_DB_PATH = str(Path(__file__).parent.parent.parent / "vectorstore")
+_DB_PATH = os.environ.get(
+    "VECTORSTORE_PATH",
+    str(Path(__file__).parent.parent.parent / "vectorstore"),
+)
 
 _collection = None
 _voyage = None

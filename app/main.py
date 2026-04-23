@@ -1,4 +1,5 @@
 import asyncio
+import json
 import os
 import sys
 from pathlib import Path
@@ -8,7 +9,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from fastapi import FastAPI, Request, Form, Depends, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
-
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 import secrets
 import anthropic
@@ -19,53 +19,15 @@ from src.vectorstore.client import search, count
 APP_PASSWORD = os.environ.get("APP_PASSWORD", "tsc2024")
 APP_USER = os.environ.get("APP_USER", "tsc")
 PORT = int(os.environ.get("PORT", 9001))
+REBUILD_INTERVAL = int(os.environ.get("REBUILD_INTERVAL_SECONDS", "3600"))
 
 app = FastAPI(title="TSC Brain")
 app.mount("/static", StaticFiles(directory=str(Path(__file__).parent / "static")), name="static")
 
-_bg_tasks: set = set()
-
-
-@app.on_event("startup")
-async def startup_event():
-    task = asyncio.create_task(_init_background())
-    _bg_tasks.add(task)
-    task.add_done_callback(_bg_tasks.discard)
-
-
-async def _init_background():
-    import importlib.util
-
-    print("[rebuild] background task started", flush=True)
-
-    try:
-        await asyncio.to_thread(count)
-        print("[rebuild] chromadb ok", flush=True)
-    except Exception as e:
-        print(f"[rebuild] chromadb pre-warm failed: {e}", flush=True)
-
-    def _run_rebuild():
-        import traceback
-        print("[rebuild] starting rebuild...", flush=True)
-        try:
-            spec = importlib.util.spec_from_file_location(
-                "rebuild_index",
-                str(Path(__file__).parent.parent / "scripts" / "rebuild_index.py"),
-            )
-            mod = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(mod)
-            mod.run()
-            print("[rebuild] done", flush=True)
-        except Exception as exc:
-            print(f"[rebuild] FAILED: {exc}", flush=True)
-            traceback.print_exc()
-
-    await asyncio.to_thread(_run_rebuild)
-    print("[rebuild] background task complete", flush=True)
 security = HTTPBasic()
 _claude = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
-
 _HTML_PATH = Path(__file__).parent / "templates" / "index.html"
+_bg_tasks: set = set()
 
 SYSTEM_PROMPT = """Sei l'assistente della knowledge base di THETA SALES CONSULTING (TSC).
 Il tuo compito è rispondere alle domande di Federico e del suo team usando esclusivamente
@@ -92,6 +54,57 @@ def _check_auth(credentials: HTTPBasicCredentials = Depends(security)):
     return credentials.username
 
 
+def _do_rebuild():
+    import importlib.util, traceback
+    print("[rebuild] starting...", flush=True)
+    try:
+        spec = importlib.util.spec_from_file_location(
+            "rebuild_index",
+            str(Path(__file__).parent.parent / "scripts" / "rebuild_index.py"),
+        )
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        mod.run()
+        print("[rebuild] done", flush=True)
+    except Exception as exc:
+        print(f"[rebuild] FAILED: {exc}", flush=True)
+        traceback.print_exc()
+
+
+async def _run_rebuild_async():
+    await asyncio.to_thread(_do_rebuild)
+
+
+async def _init_background():
+    print("[rebuild] background task started", flush=True)
+    try:
+        await asyncio.to_thread(count)
+        print("[rebuild] chromadb ok", flush=True)
+    except Exception as e:
+        print(f"[rebuild] chromadb pre-warm failed: {e}", flush=True)
+    await _run_rebuild_async()
+
+
+async def _periodic_rebuild():
+    print(f"[rebuild] periodic task started — interval {REBUILD_INTERVAL}s", flush=True)
+    while True:
+        await asyncio.sleep(REBUILD_INTERVAL)
+        print("[rebuild] periodic trigger", flush=True)
+        await _run_rebuild_async()
+
+
+def _spawn(coro):
+    task = asyncio.create_task(coro)
+    _bg_tasks.add(task)
+    task.add_done_callback(_bg_tasks.discard)
+
+
+@app.on_event("startup")
+async def startup_event():
+    _spawn(_init_background())
+    _spawn(_periodic_rebuild())
+
+
 @app.get("/", response_class=HTMLResponse)
 async def index(_=Depends(_check_auth)):
     return FileResponse(_HTML_PATH)
@@ -99,7 +112,7 @@ async def index(_=Depends(_check_auth)):
 
 @app.post("/api/rebuild")
 async def rebuild(_=Depends(_check_auth)):
-    asyncio.create_task(_init_background())
+    _spawn(_run_rebuild_async())
     return JSONResponse({"status": "rebuild started"})
 
 
@@ -114,7 +127,6 @@ async def status():
 
 @app.post("/api/query")
 async def query(request: Request, question: str = Form(...), history: str = Form("[]"), _=Depends(_check_auth)):
-    import json
     if not question.strip():
         return JSONResponse({"error": "Domanda vuota"}, status_code=400)
 
