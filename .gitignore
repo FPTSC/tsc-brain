@@ -6,6 +6,6 @@ venv/
 credentials.json
 token.json
 *.log
-vectorstore/
+/vectorstore/
 processed_ids.json
 processed_docs.json
