@@ -31,16 +31,25 @@ async def startup_event():
 
 
 async def _init_background():
-    import asyncio
-    # Pre-warm ChromaDB in a thread so it doesn't block the event loop
-    await asyncio.to_thread(count)
-    try:
-        import subprocess, sys
-        subprocess.Popen(
-            [sys.executable, str(Path(__file__).parent.parent / "scripts" / "rebuild_index.py")]
-        )
-    except Exception:
-        pass
+    import importlib.util
+    import logging
+    _log = logging.getLogger("rebuild")
+
+    await asyncio.to_thread(count)  # pre-warm ChromaDB
+
+    def _run_rebuild():
+        try:
+            spec = importlib.util.spec_from_file_location(
+                "rebuild_index",
+                str(Path(__file__).parent.parent / "scripts" / "rebuild_index.py"),
+            )
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            mod.run()
+        except Exception as exc:
+            _log.error(f"rebuild_index failed: {exc}", exc_info=True)
+
+    await asyncio.to_thread(_run_rebuild)
 security = HTTPBasic()
 _claude = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
@@ -74,6 +83,12 @@ def _check_auth(credentials: HTTPBasicCredentials = Depends(security)):
 @app.get("/", response_class=HTMLResponse)
 async def index(_=Depends(_check_auth)):
     return FileResponse(_HTML_PATH)
+
+
+@app.post("/api/rebuild")
+async def rebuild(_=Depends(_check_auth)):
+    asyncio.create_task(_init_background())
+    return JSONResponse({"status": "rebuild started"})
 
 
 @app.get("/api/status")
