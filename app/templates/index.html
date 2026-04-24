@@ -178,6 +178,29 @@
       if (el) el.remove();
     }
 
+    function exportPdf(text, sources) {
+      const sourcesList = (sources||[]).map(s => `<li>${s.titolo}</li>`).join('');
+      const w = window.open('', '_blank');
+      w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+        <title>TSC Brain — Risposta</title>
+        <style>
+          body { font-family: Georgia, serif; max-width: 720px; margin: 40px auto; padding: 0 24px; color: #111; line-height: 1.7; }
+          h1 { font-size: 1rem; color: #1a6fd4; border-bottom: 2px solid #1a6fd4; padding-bottom: 8px; margin-bottom: 24px; }
+          h2,h3 { color: #1252a3; }
+          ul { padding-left: 1.2em; }
+          blockquote { border-left: 3px solid #1a6fd4; padding-left: 12px; color: #555; font-style: italic; }
+          .sources { margin-top: 32px; padding-top: 16px; border-top: 1px solid #ddd; font-size: 0.85rem; color: #666; }
+        </style>
+      </head><body>
+        <h1>TSC Brain — Knowledge Base</h1>
+        ${marked.parse(text)}
+        ${sourcesList ? `<div class="sources"><strong>Fonti:</strong><ul>${sourcesList}</ul></div>` : ''}
+      </body></html>`);
+      w.document.close();
+      w.focus();
+      w.print();
+    }
+
     function addAIBubble(text, sources) {
       let sourcesHtml = '';
       if (sources && sources.length > 0) {
@@ -188,11 +211,20 @@
       }
       const d = document.createElement('div');
       d.className = 'flex justify-start';
-      d.innerHTML = `
-        <div class="glass rounded-2xl rounded-tl-sm px-4 sm:px-5 py-3 sm:py-4 text-sm shadow-xl" style="max-width:92%">
-          <div class="prose-tsc leading-relaxed">${marked.parse(text)}</div>
-          ${sourcesHtml}
+      const bubble = document.createElement('div');
+      bubble.className = 'glass rounded-2xl rounded-tl-sm px-4 sm:px-5 py-3 sm:py-4 text-sm shadow-xl';
+      bubble.style.maxWidth = '92%';
+      bubble.innerHTML = `
+        <div class="prose-tsc leading-relaxed">${marked.parse(text)}</div>
+        ${sourcesHtml}
+        <div class="mt-3 pt-2 border-t border-brand/10 flex justify-end">
+          <button onclick="exportPdf(${JSON.stringify(text)}, ${JSON.stringify(sources||[])})"
+            class="flex items-center gap-1.5 text-xs text-slate-500 hover:text-brand-light transition-colors">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+            Esporta PDF
+          </button>
         </div>`;
+      d.appendChild(bubble);
       chatMessages.appendChild(d);
       scrollToBottom();
     }
