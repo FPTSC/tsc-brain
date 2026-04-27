@@ -108,6 +108,11 @@
     <div class="max-w-3xl mx-auto px-4 sm:px-6 py-3 sm:py-4">
       <form id="queryForm">
         <div class="flex gap-2 sm:gap-3 items-end">
+          <label for="audioInput" title="Analizza audio call"
+            class="cursor-pointer flex items-center justify-center flex-none min-w-[48px] min-h-[48px] rounded-xl border border-slate-700 hover:border-brand text-slate-400 hover:text-brand-light transition-all">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4M12 3a4 4 0 014 4v4a4 4 0 01-8 0V7a4 4 0 014-4z"/></svg>
+          </label>
+          <input type="file" id="audioInput" accept=".mp3,.mp4,.m4a,.wav,.webm,.ogg,.flac" class="hidden" />
           <input
             id="questionInput"
             type="text"
@@ -130,6 +135,7 @@
     const form = document.getElementById('queryForm');
     const input = document.getElementById('questionInput');
     const submitBtn = document.getElementById('submitBtn');
+    const audioInput = document.getElementById('audioInput');
     const chatMessages = document.getElementById('chatMessages');
     const emptyState = document.getElementById('emptyState');
     const chatMain = document.getElementById('chatMain');
@@ -178,6 +184,32 @@
       if (el) el.remove();
     }
 
+    function addAnalysisBubble(filename, transcript, answer, sources) {
+      let sourcesHtml = '';
+      if (sources && sources.length > 0) {
+        const links = sources.map(s =>
+          `<a href="${s.url||'#'}" target="_blank" class="text-xs bg-navy-800 text-brand-light border border-brand/30 rounded-full px-3 py-1 hover:border-brand transition-all truncate max-w-xs">${esc(s.titolo)}</a>`
+        ).join('');
+        sourcesHtml = `<div class="mt-3 pt-3 border-t border-brand/10"><p class="text-xs text-slate-600 uppercase tracking-widest mb-2 font-semibold">Fonti KB</p><div class="flex flex-wrap gap-2">${links}</div></div>`;
+      }
+      const trId = 'tr_' + Date.now();
+      const d = document.createElement('div');
+      d.className = 'flex justify-start';
+      d.innerHTML = `
+        <div class="glass rounded-2xl rounded-tl-sm px-4 sm:px-5 py-3 sm:py-4 text-sm shadow-xl" style="max-width:92%">
+          <div class="flex items-center gap-2 mb-3 pb-3 border-b border-brand/10">
+            <svg class="w-4 h-4 text-brand-light flex-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4M12 3a4 4 0 014 4v4a4 4 0 01-8 0V7a4 4 0 014-4z"/></svg>
+            <span class="text-xs text-brand-light font-semibold truncate">${esc(filename)}</span>
+            <button onclick="document.getElementById('${trId}').classList.toggle('hidden')" class="ml-auto text-xs text-slate-500 hover:text-slate-300 border border-slate-700 rounded px-2 py-0.5 flex-none whitespace-nowrap">Trascrizione</button>
+          </div>
+          <div id="${trId}" class="hidden mb-3 p-3 bg-navy-950/50 rounded-lg text-xs text-slate-400 leading-relaxed max-h-40 overflow-y-auto border border-slate-700/50">${esc(transcript)}</div>
+          <div class="prose-tsc leading-relaxed">${marked.parse(answer)}</div>
+          ${sourcesHtml}
+        </div>`;
+      chatMessages.appendChild(d);
+      scrollToBottom();
+    }
+
     function addAIBubble(text, sources) {
       let sourcesHtml = '';
       if (sources && sources.length > 0) {
@@ -211,6 +243,38 @@
       chatMessages.appendChild(emptyState);
       emptyState.style.display = '';
     }
+
+    audioInput.addEventListener('change', async () => {
+      const file = audioInput.files[0];
+      if (!file) return;
+      audioInput.value = '';
+
+      emptyState.style.display = 'none';
+      addUserBubble('🎙 ' + file.name);
+      addTypingIndicator();
+      submitBtn.disabled = true;
+
+      try {
+        const fd = new FormData();
+        fd.append('file', file);
+        const resp = await fetch('/api/analyze-audio', { method: 'POST', body: fd });
+        const data = await resp.json();
+        removeTypingIndicator();
+        if (data.error) {
+          addErrorBubble(data.error);
+        } else {
+          addAnalysisBubble(data.filename, data.transcript, data.answer, data.sources);
+          history.push({ role: 'user', content: `[Analisi call: ${data.filename}]\n\nTrascrizione:\n${data.transcript}` });
+          history.push({ role: 'assistant', content: data.answer });
+        }
+      } catch {
+        removeTypingIndicator();
+        addErrorBubble('Errore durante l\'analisi. Riprova.');
+      } finally {
+        submitBtn.disabled = false;
+        input.focus();
+      }
+    });
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();

@@ -11,6 +11,8 @@ FATHOM_BASE_URL = "https://api.fathom.ai/external/v1"
 
 VOYAGE_API_KEY = os.environ.get("VOYAGE_API_KEY", "")
 
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
+
 NOTION_TOKEN = os.environ.get("NOTION_TOKEN", "")
 NOTION_DATABASE_ID = os.environ.get("NOTION_DATABASE_ID", "")
 
