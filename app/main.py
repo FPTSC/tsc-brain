@@ -16,6 +16,8 @@ from groq import Groq
 
 from config.settings import ANTHROPIC_API_KEY, CLAUDE_MODEL, GROQ_API_KEY
 from src.vectorstore.client import search, count
+from src.processor.extractor import extract_from_coaching
+from src.notion.client import save_call
 
 APP_PASSWORD = os.environ.get("APP_PASSWORD", "tsc2024")
 APP_USER = os.environ.get("APP_USER", "tsc")
@@ -201,7 +203,6 @@ _GROQ_LIMIT = 24 * 1024 * 1024  # 24MB safety margin
 
 
 def _compress_audio(content: bytes, filename: str) -> tuple[bytes, str]:
-    """Compress audio to mono 64kbps mp3 to fit within Groq's 25MB limit."""
     import io
     from pydub import AudioSegment
     ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else "mp3"
@@ -212,33 +213,34 @@ def _compress_audio(content: bytes, filename: str) -> tuple[bytes, str]:
     return out.getvalue(), "compressed.mp3"
 
 
+async def _transcribe(content: bytes, filename: str) -> str:
+    """Transcribes audio with Groq Whisper, compressing first if needed."""
+    audio_name = filename
+    if len(content) > _GROQ_LIMIT:
+        content, audio_name = await asyncio.to_thread(_compress_audio, content, filename)
+    if len(content) > _GROQ_LIMIT:
+        raise ValueError("File troppo grande anche dopo la compressione.")
+    transcription = await asyncio.to_thread(
+        lambda: _groq.audio.transcriptions.create(
+            file=(audio_name, content),
+            model="whisper-large-v3-turbo",
+            language="it",
+            response_format="text",
+        )
+    )
+    return transcription if isinstance(transcription, str) else transcription.text
+
+
 @app.post("/api/analyze-audio")
 async def analyze_audio(request: Request, file: UploadFile = File(...), _=Depends(_check_auth)):
     if not _groq:
         return JSONResponse({"error": "GROQ_API_KEY non configurata."}, status_code=500)
 
     content = await file.read()
-    audio_name = file.filename
-
-    if len(content) > _GROQ_LIMIT:
-        try:
-            content, audio_name = await asyncio.to_thread(_compress_audio, content, file.filename)
-        except Exception as e:
-            return JSONResponse({"error": f"File troppo grande e compressione fallita: {e}"}, status_code=400)
-
-    if len(content) > _GROQ_LIMIT:
-        return JSONResponse({"error": "File troppo grande anche dopo la compressione. Prova a tagliare l'audio."}, status_code=400)
-
     try:
-        transcription = await asyncio.to_thread(
-            lambda: _groq.audio.transcriptions.create(
-                file=(audio_name, content),
-                model="whisper-large-v3-turbo",
-                language="it",
-                response_format="text",
-            )
-        )
-        transcript = transcription if isinstance(transcription, str) else transcription.text
+        transcript = await _transcribe(content, file.filename)
+    except ValueError as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
     except Exception as e:
         return JSONResponse({"error": f"Errore trascrizione: {e}"}, status_code=500)
 
@@ -270,3 +272,40 @@ async def analyze_audio(request: Request, file: UploadFile = File(...), _=Depend
         "answer": message.content[0].text,
         "sources": sources,
     })
+
+
+@app.post("/api/save-coaching")
+async def save_coaching(
+    request: Request,
+    file: UploadFile = File(...),
+    title: str = Form(""),
+    analysis: str = Form(...),
+    _=Depends(_check_auth),
+):
+    if not _groq:
+        return JSONResponse({"error": "GROQ_API_KEY non configurata."}, status_code=500)
+    if not analysis.strip():
+        return JSONResponse({"error": "L'analisi non può essere vuota."}, status_code=400)
+
+    content = await file.read()
+    try:
+        transcript = await _transcribe(content, file.filename)
+    except ValueError as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
+    except Exception as e:
+        return JSONResponse({"error": f"Errore trascrizione: {e}"}, status_code=500)
+
+    try:
+        data = await asyncio.to_thread(extract_from_coaching, transcript, analysis)
+    except Exception as e:
+        return JSONResponse({"error": f"Errore strutturazione analisi: {e}"}, status_code=500)
+
+    call_title = title.strip() or data.get("titolo") or file.filename
+    data["titolo"] = call_title
+
+    try:
+        notion_url = await asyncio.to_thread(save_call, file.filename, transcript, data)
+    except Exception as e:
+        return JSONResponse({"error": f"Errore salvataggio Notion: {e}"}, status_code=500)
+
+    return JSONResponse({"url": notion_url, "titolo": call_title})
