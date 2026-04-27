@@ -197,19 +197,42 @@ async def query(request: Request, question: str = Form(...), history: str = Form
     })
 
 
+_GROQ_LIMIT = 24 * 1024 * 1024  # 24MB safety margin
+
+
+def _compress_audio(content: bytes, filename: str) -> tuple[bytes, str]:
+    """Compress audio to mono 64kbps mp3 to fit within Groq's 25MB limit."""
+    import io
+    from pydub import AudioSegment
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else "mp3"
+    audio = AudioSegment.from_file(io.BytesIO(content), format=ext)
+    audio = audio.set_channels(1).set_frame_rate(16000)
+    out = io.BytesIO()
+    audio.export(out, format="mp3", bitrate="64k")
+    return out.getvalue(), "compressed.mp3"
+
+
 @app.post("/api/analyze-audio")
 async def analyze_audio(request: Request, file: UploadFile = File(...), _=Depends(_check_auth)):
     if not _groq:
         return JSONResponse({"error": "GROQ_API_KEY non configurata."}, status_code=500)
 
     content = await file.read()
-    if len(content) > 25 * 1024 * 1024:
-        return JSONResponse({"error": "File troppo grande. Limite massimo: 25MB."}, status_code=400)
+    audio_name = file.filename
+
+    if len(content) > _GROQ_LIMIT:
+        try:
+            content, audio_name = await asyncio.to_thread(_compress_audio, content, file.filename)
+        except Exception as e:
+            return JSONResponse({"error": f"File troppo grande e compressione fallita: {e}"}, status_code=400)
+
+    if len(content) > _GROQ_LIMIT:
+        return JSONResponse({"error": "File troppo grande anche dopo la compressione. Prova a tagliare l'audio."}, status_code=400)
 
     try:
         transcription = await asyncio.to_thread(
             lambda: _groq.audio.transcriptions.create(
-                file=(file.filename, content),
+                file=(audio_name, content),
                 model="whisper-large-v3-turbo",
                 language="it",
                 response_format="text",
