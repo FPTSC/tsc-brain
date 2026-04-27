@@ -203,14 +203,25 @@ _GROQ_LIMIT = 24 * 1024 * 1024  # 24MB safety margin
 
 
 def _compress_audio(content: bytes, filename: str) -> tuple[bytes, str]:
-    import io
-    from pydub import AudioSegment
+    import tempfile, subprocess, os
     ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else "mp3"
-    audio = AudioSegment.from_file(io.BytesIO(content), format=ext)
-    audio = audio.set_channels(1).set_frame_rate(16000)
-    out = io.BytesIO()
-    audio.export(out, format="mp3", bitrate="64k")
-    return out.getvalue(), "compressed.mp3"
+    with tempfile.NamedTemporaryFile(suffix=f".{ext}", delete=False) as f:
+        f.write(content)
+        input_path = f.name
+    output_path = input_path + "_out.mp3"
+    try:
+        result = subprocess.run(
+            ["ffmpeg", "-y", "-i", input_path, "-ac", "1", "-ar", "16000", "-b:a", "64k", output_path],
+            capture_output=True, timeout=300,
+        )
+        if result.returncode != 0:
+            raise RuntimeError(f"ffmpeg: {result.stderr.decode()[-300:]}")
+        with open(output_path, "rb") as out:
+            return out.read(), "compressed.mp3"
+    finally:
+        os.unlink(input_path)
+        if os.path.exists(output_path):
+            os.unlink(output_path)
 
 
 async def _transcribe(content: bytes, filename: str) -> str:
