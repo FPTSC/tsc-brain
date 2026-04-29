@@ -306,26 +306,61 @@
       addTypingIndicator();
       submitBtn.disabled = true;
 
+      let jobId = null;
       try {
         const fd = new FormData();
         fd.append('file', file);
         const resp = await fetch('/api/analyze-audio', { method: 'POST', body: fd });
-        const data = await resp.json();
-        removeTypingIndicator();
-        if (data.error) {
-          addErrorBubble(data.error);
-        } else {
-          addAnalysisBubble(data.filename, data.transcript, data.answer, data.sources);
-          history.push({ role: 'user', content: `[Analisi call: ${data.filename}]\n\nTrascrizione:\n${data.transcript}` });
-          history.push({ role: 'assistant', content: data.answer });
+        const startData = await resp.json();
+        if (startData.error) {
+          removeTypingIndicator();
+          addErrorBubble(startData.error);
+          submitBtn.disabled = false;
+          input.focus();
+          return;
         }
+        jobId = startData.job_id;
       } catch {
         removeTypingIndicator();
-        addErrorBubble('Errore durante l\'analisi. Riprova.');
-      } finally {
+        addErrorBubble('Errore di caricamento. Riprova.');
         submitBtn.disabled = false;
         input.focus();
+        return;
       }
+
+      let attempts = 0;
+      const maxAttempts = 150;
+      const poll = async () => {
+        if (attempts++ >= maxAttempts) {
+          removeTypingIndicator();
+          addErrorBubble('Analisi troppo lunga. Riprova con un file più corto.');
+          submitBtn.disabled = false;
+          input.focus();
+          return;
+        }
+        try {
+          const statusResp = await fetch(`/api/analyze-status/${jobId}`);
+          const data = await statusResp.json();
+          if (data.status === 'pending') {
+            setTimeout(poll, 2000);
+            return;
+          }
+          removeTypingIndicator();
+          if (data.status === 'error') {
+            addErrorBubble(data.error || 'Errore durante l\'analisi.');
+          } else {
+            addAnalysisBubble(data.filename, data.transcript, data.answer, data.sources);
+            history.push({ role: 'user', content: `[Analisi call: ${data.filename}]\n\nTrascrizione:\n${data.transcript}` });
+            history.push({ role: 'assistant', content: data.answer });
+          }
+        } catch {
+          removeTypingIndicator();
+          addErrorBubble('Errore di connessione. Riprova.');
+        }
+        submitBtn.disabled = false;
+        input.focus();
+      };
+      setTimeout(poll, 2000);
     });
 
     function openCoachingModal() {

@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TSC Brain — Admin</title>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            navy: { 950: '#050a15', 900: '#080f1e', 800: '#0d1929', 700: '#112038' },
+            brand: { light: '#38bef8', DEFAULT: '#1a6fd4', dark: '#1252a3' }
+          },
+          fontFamily: { sans: ['Montserrat', 'sans-serif'] }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { background-color: #080f1e; }
+    .glass {
+      background: rgba(13, 25, 41, 0.85);
+      border: 1px solid rgba(26, 111, 212, 0.2);
+      backdrop-filter: blur(10px);
+    }
+    .glow-input:focus {
+      outline: none;
+      border-color: #1a6fd4;
+      box-shadow: 0 0 0 3px rgba(26, 111, 212, 0.2);
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #1a6fd4, #1252a3);
+      transition: all 0.2s;
+    }
+    .btn-primary:hover:not(:disabled) {
+      background: linear-gradient(135deg, #38bef8, #1a6fd4);
+      box-shadow: 0 0 20px rgba(26, 111, 212, 0.4);
+    }
+    .header-line {
+      height: 2px;
+      background: linear-gradient(90deg, transparent, #1a6fd4, #38bef8, transparent);
+    }
+  </style>
+</head>
+<body class="font-sans min-h-screen text-slate-200">
+
+  <div class="fixed inset-0 pointer-events-none" style="background: radial-gradient(ellipse at 20% 20%, rgba(26,111,212,0.07) 0%, transparent 60%), radial-gradient(ellipse at 80% 80%, rgba(56,190,248,0.04) 0%, transparent 60%);"></div>
+
+  <!-- Header -->
+  <header class="sticky top-0 z-50" style="background: rgba(8,15,30,0.95); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(26,111,212,0.15);">
+    <div class="max-w-3xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <img src="/static/logo.png" alt="TSC" class="h-8 sm:h-9 w-auto object-contain" />
+        <div>
+          <div class="text-xs font-semibold tracking-widest text-brand-light uppercase">Admin</div>
+          <div class="text-xs text-slate-500 mt-0.5">Gestione utenti</div>
+        </div>
+      </div>
+      <a href="/" class="flex items-center gap-1.5 text-xs text-slate-400 hover:text-brand-light border border-slate-700 hover:border-brand px-3 py-2 rounded-lg transition-all">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+        <span class="hidden sm:inline">Torna al Brain</span>
+      </a>
+    </div>
+    <div class="header-line"></div>
+  </header>
+
+  <main class="max-w-3xl mx-auto px-4 sm:px-6 py-8 space-y-6 relative">
+
+    <!-- Feedback banner -->
+    <div id="banner" class="hidden rounded-xl px-4 py-3 text-sm font-medium"></div>
+
+    <!-- Utenti attivi -->
+    <div class="glass rounded-2xl overflow-hidden">
+      <div class="px-5 py-4 border-b border-brand/20 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <svg class="w-4 h-4 text-brand-light" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+          <h2 class="text-sm font-semibold text-slate-200">Utenti attivi</h2>
+        </div>
+        <span id="userCount" class="text-xs text-slate-500"></span>
+      </div>
+      <div id="userList" class="divide-y divide-brand/10">
+        <div class="px-5 py-6 text-center text-sm text-slate-500">Caricamento...</div>
+      </div>
+    </div>
+
+    <!-- Aggiungi utente -->
+    <div class="glass rounded-2xl overflow-hidden">
+      <div class="px-5 py-4 border-b border-brand/20 flex items-center gap-2">
+        <svg class="w-4 h-4 text-brand-light" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
+        <h2 class="text-sm font-semibold text-slate-200">Aggiungi utente</h2>
+      </div>
+      <form id="addForm" class="px-5 py-5 space-y-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="text-xs text-slate-400 uppercase tracking-widest font-semibold mb-1.5 block">Username</label>
+            <input id="newUsername" type="text" placeholder="es. mario.rossi" autocomplete="off"
+              class="w-full bg-navy-950 border border-slate-700 glow-input rounded-xl px-4 py-2.5 text-sm text-slate-200 placeholder-slate-600 transition-all"/>
+          </div>
+          <div>
+            <label class="text-xs text-slate-400 uppercase tracking-widest font-semibold mb-1.5 block">Password</label>
+            <input id="newPassword" type="password" placeholder="Min. 6 caratteri"
+              class="w-full bg-navy-950 border border-slate-700 glow-input rounded-xl px-4 py-2.5 text-sm text-slate-200 placeholder-slate-600 transition-all"/>
+          </div>
+        </div>
+        <div class="flex items-center justify-between">
+          <label class="flex items-center gap-2.5 cursor-pointer select-none">
+            <div class="relative">
+              <input id="isAdmin" type="checkbox" class="sr-only peer"/>
+              <div class="w-10 h-5 bg-slate-700 peer-checked:bg-brand rounded-full transition-colors"></div>
+              <div class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-5"></div>
+            </div>
+            <span class="text-sm text-slate-400">Privilegi admin</span>
+          </label>
+          <button type="submit" id="addBtn"
+            class="btn-primary text-white px-5 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-40 disabled:cursor-not-allowed">
+            Aggiungi
+          </button>
+        </div>
+      </form>
+    </div>
+
+  </main>
+
+  <script>
+    function showBanner(msg, ok) {
+      const el = document.getElementById('banner');
+      el.textContent = msg;
+      el.className = `rounded-xl px-4 py-3 text-sm font-medium ${ok ? 'bg-green-900/20 border border-green-500/30 text-green-400' : 'bg-red-900/20 border border-red-500/30 text-red-400'}`;
+      el.classList.remove('hidden');
+      setTimeout(() => el.classList.add('hidden'), 4000);
+    }
+
+    function esc(t) {
+      return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    async function loadUsers() {
+      const resp = await fetch('/api/admin/users');
+      if (!resp.ok) { document.getElementById('userList').innerHTML = '<div class="px-5 py-6 text-center text-sm text-red-400">Errore nel caricamento utenti.</div>'; return; }
+      const users = await resp.json();
+      document.getElementById('userCount').textContent = users.length + ' utente' + (users.length !== 1 ? 'i' : '');
+      const list = document.getElementById('userList');
+      if (users.length === 0) {
+        list.innerHTML = '<div class="px-5 py-6 text-center text-sm text-slate-500">Nessun utente configurato.<br>Aggiungi il primo utente usando il modulo qui sotto.</div>';
+        return;
+      }
+      list.innerHTML = users.map(u => `
+        <div class="flex items-center justify-between px-5 py-3.5 hover:bg-brand/5 transition-colors" id="row-${esc(u.username)}">
+          <div class="flex items-center gap-3 min-w-0">
+            <div class="w-8 h-8 rounded-full bg-brand/20 border border-brand/30 flex items-center justify-center flex-none">
+              <span class="text-xs font-bold text-brand-light">${esc(u.username[0].toUpperCase())}</span>
+            </div>
+            <span class="text-sm font-medium text-slate-200 truncate">${esc(u.username)}</span>
+            ${u.admin ? '<span class="flex-none text-xs bg-brand/15 text-brand-light border border-brand/30 rounded-full px-2 py-0.5 font-semibold">admin</span>' : ''}
+          </div>
+          <div class="flex items-center gap-2 flex-none ml-3">
+            ${!u.admin ? `
+            <button onclick="toggleAdmin('${esc(u.username)}')"
+              class="text-xs text-slate-500 hover:text-brand-light border border-slate-700 hover:border-brand rounded-lg px-2.5 py-1.5 transition-all">
+              Rendi admin
+            </button>` : ''}
+            <button onclick="removeUser('${esc(u.username)}')"
+              class="text-xs text-slate-500 hover:text-red-400 border border-slate-700 hover:border-red-500/50 rounded-lg px-2.5 py-1.5 transition-all">
+              Rimuovi
+            </button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    async function removeUser(username) {
+      if (!confirm(`Rimuovere l'utente "${username}"?`)) return;
+      const resp = await fetch(`/api/admin/users/${encodeURIComponent(username)}`, { method: 'DELETE' });
+      const data = await resp.json();
+      if (data.error) { showBanner(data.error, false); return; }
+      showBanner(`Utente "${username}" rimosso.`, true);
+      loadUsers();
+    }
+
+    async function toggleAdmin(username) {
+      const resp = await fetch(`/api/admin/users/${encodeURIComponent(username)}`, { method: 'PATCH' });
+      const data = await resp.json();
+      if (data.error) { showBanner(data.error, false); return; }
+      showBanner(`"${username}" è ora ${data.admin ? 'admin' : 'utente standard'}.`, true);
+      loadUsers();
+    }
+
+    document.getElementById('addForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const username = document.getElementById('newUsername').value.trim();
+      const password = document.getElementById('newPassword').value;
+      const is_admin = document.getElementById('isAdmin').checked;
+      const btn = document.getElementById('addBtn');
+
+      if (!username || !password) { showBanner('Compila username e password.', false); return; }
+
+      btn.disabled = true;
+      btn.textContent = 'Attendere...';
+
+      const fd = new FormData();
+      fd.append('username', username);
+      fd.append('password', password);
+      fd.append('is_admin', is_admin);
+
+      const resp = await fetch('/api/admin/users', { method: 'POST', body: fd });
+      const data = await resp.json();
+
+      btn.disabled = false;
+      btn.textContent = 'Aggiungi';
+
+      if (data.error) { showBanner(data.error, false); return; }
+      showBanner(`Utente "${username}" aggiunto.`, true);
+      document.getElementById('newUsername').value = '';
+      document.getElementById('newPassword').value = '';
+      document.getElementById('isAdmin').checked = false;
+      loadUsers();
+    });
+
+    loadUsers();
+  </script>
+</body>
+</html>
