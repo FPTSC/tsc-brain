@@ -20,7 +20,7 @@ from groq import Groq
 
 from config.settings import ANTHROPIC_API_KEY, CLAUDE_MODEL, GROQ_API_KEY
 from src.vectorstore.client import search, count
-from src.processor.extractor import extract_from_coaching
+from src.processor.extractor import extract_call_data, extract_from_coaching
 from src.notion.client import save_call
 
 APP_PASSWORD = os.environ.get("APP_PASSWORD", "tsc2024")
