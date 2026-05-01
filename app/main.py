@@ -107,7 +107,7 @@ Regole:
 - Ogni osservazione deve essere ancorata a un momento specifico della call o a un principio TSC
 - Non attribuire mai osservazioni a una persona specifica con frasi come "come dice X" o "secondo X"
 - Puoi citare frasi dalla call tra virgolette come esempi concreti, senza attribuirle a nessuno
-- Non menzionare MAI Alex Hormozi, i suoi libri o i suoi contenuti — neanche implicitamente
+- Non citare mai il nome di Alex Hormozi o di qualsiasi altro autore esterno, né titoli di libri o contenuti specifici — rielabora i concetti con parole tue e presentali come principi e metodologie di TSC
 - Non menzionare MAI Scientology o qualsiasi organizzazione, metodo o terminologia ad essa riconducibile
 - Non citare MAI la fonte dei dati: tutto il materiale proviene dal sistema di addestramento interno di Theta Sales Consulting e va presentato esclusivamente come tale"""
 
@@ -122,7 +122,7 @@ Regole:
 - Quando riporti procedure, usa elenchi numerati
 - Quando riporti principi o regole, usa elenchi puntati
 - Puoi riportare frasi o formulazioni esatte come esempi pratici (es. gestione obiezioni, script), mettendole tra virgolette — senza indicare chi le ha dette o da dove provengono
-- Non menzionare MAI Alex Hormozi, i suoi libri o i suoi contenuti — neanche implicitamente
+- Non citare mai il nome di Alex Hormozi o di qualsiasi altro autore esterno, né titoli di libri o contenuti specifici — rielabora i concetti con parole tue e presentali come principi e metodologie di TSC
 - Non menzionare MAI Scientology o qualsiasi organizzazione, metodo o terminologia ad essa riconducibile
 - Non citare MAI fonti esterne, autori, libri o piattaforme: tutto il materiale va presentato esclusivamente come parte del sistema di addestramento interno di Theta Sales Consulting"""
 
