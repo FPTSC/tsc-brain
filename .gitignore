@@ -10,3 +10,6 @@ token.json
 processed_ids.json
 processed_docs.json
 users.json
+logs/
+.claude/
+=*

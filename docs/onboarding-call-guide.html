@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<title>Guida Onboarding — Brain Knowledge Base</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    font-size: 13px;
+    color: #1a1a2e;
+    background: white;
+    padding: 40px;
+    max-width: 900px;
+    margin: 0 auto;
+    line-height: 1.6;
+  }
+
+  /* HEADER */
+  .header {
+    background: linear-gradient(135deg, #1a6fd4, #0d1929);
+    color: white;
+    padding: 28px 32px;
+    border-radius: 12px;
+    margin-bottom: 32px;
+  }
+  .header h1 { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; }
+  .header p { font-size: 13px; opacity: 0.75; margin-top: 6px; }
+  .header .badge {
+    display: inline-block;
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 20px;
+    padding: 3px 12px;
+    font-size: 11px;
+    font-weight: 600;
+    margin-top: 10px;
+  }
+
+  /* SECTIONS */
+  .section {
+    margin-bottom: 28px;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .section-header {
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+    padding: 12px 18px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .section-num {
+    background: #1a6fd4;
+    color: white;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .section-title { font-size: 14px; font-weight: 700; color: #0d1929; }
+  .section-subtitle { font-size: 11px; color: #64748b; margin-left: auto; }
+  .section-body { padding: 16px 18px; }
+
+  /* CHECKLIST */
+  .checklist { list-style: none; }
+  .checklist li {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 7px 0;
+    border-bottom: 1px solid #f1f5f9;
+    font-size: 13px;
+  }
+  .checklist li:last-child { border-bottom: none; }
+  .check-box {
+    width: 16px;
+    height: 16px;
+    border: 2px solid #cbd5e1;
+    border-radius: 4px;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  /* API KEY BLOCKS */
+  .api-block {
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    margin-bottom: 12px;
+    overflow: hidden;
+  }
+  .api-header {
+    background: #f1f5f9;
+    padding: 8px 14px;
+    font-weight: 700;
+    font-size: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: #0d1929;
+  }
+  .api-tag {
+    font-family: monospace;
+    background: #1a6fd4;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 600;
+  }
+  .api-steps { padding: 10px 14px; }
+  .api-steps ol { padding-left: 18px; }
+  .api-steps li { padding: 3px 0; color: #374151; }
+  .api-steps .url {
+    font-family: monospace;
+    font-size: 11px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    padding: 1px 6px;
+    border-radius: 4px;
+    color: #1a6fd4;
+  }
+  .api-note {
+    background: #fefce8;
+    border: 1px solid #fde047;
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 11px;
+    color: #713f12;
+    margin-top: 8px;
+  }
+
+  /* TABLE */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    margin-top: 4px;
+  }
+  th {
+    background: #f1f5f9;
+    padding: 7px 10px;
+    text-align: left;
+    font-weight: 700;
+    color: #374151;
+    border: 1px solid #e2e8f0;
+  }
+  td {
+    padding: 6px 10px;
+    border: 1px solid #e2e8f0;
+    color: #374151;
+  }
+  tr:nth-child(even) td { background: #f8fafc; }
+  .mono {
+    font-family: monospace;
+    font-size: 11px;
+    background: #f1f5f9;
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+  .type-badge {
+    background: #e0f2fe;
+    color: #0369a1;
+    border-radius: 4px;
+    padding: 1px 7px;
+    font-size: 10px;
+    font-weight: 600;
+  }
+
+  /* STEPS */
+  .steps { list-style: none; counter-reset: step; }
+  .steps li {
+    counter-increment: step;
+    display: flex;
+    gap: 12px;
+    padding: 8px 0;
+    border-bottom: 1px solid #f1f5f9;
+    font-size: 13px;
+    align-items: flex-start;
+  }
+  .steps li:last-child { border-bottom: none; }
+  .steps li::before {
+    content: counter(step);
+    background: #e0f2fe;
+    color: #1a6fd4;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 700;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  /* ENV TABLE */
+  .env-var {
+    font-family: monospace;
+    font-size: 11px;
+    font-weight: 700;
+    color: #7c3aed;
+  }
+
+  /* TIMING BAR */
+  .timing {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+  }
+  .timing-item {
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 10px 16px;
+    flex: 1;
+    min-width: 140px;
+    text-align: center;
+  }
+  .timing-item .t-label { font-size: 10px; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+  .timing-item .t-value { font-size: 18px; font-weight: 800; color: #1a6fd4; }
+  .timing-item .t-desc { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+
+  /* ALERT */
+  .alert {
+    background: #fff7ed;
+    border: 1px solid #fed7aa;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 12px;
+    color: #9a3412;
+    margin-top: 12px;
+    display: flex;
+    gap: 8px;
+  }
+  .alert-ok {
+    background: #f0fdf4;
+    border-color: #bbf7d0;
+    color: #166534;
+  }
+
+  /* FOOTER */
+  .footer {
+    margin-top: 40px;
+    padding-top: 16px;
+    border-top: 1px solid #e2e8f0;
+    font-size: 11px;
+    color: #94a3b8;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  /* PRINT */
+  @media print {
+    body { padding: 20px; font-size: 12px; }
+    .section { break-inside: avoid; }
+    .api-block { break-inside: avoid; }
+    .header { background: #1a6fd4 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .section-num { background: #1a6fd4 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Guida Onboarding — Brain Knowledge Base</h1>
+  <p>Procedura completa per l'attivazione del sistema con un nuovo cliente</p>
+  <div class="badge">Per uso interno — Theta Sales Consulting</div>
+</div>
+
+<!-- TIMING -->
+<div class="timing">
+  <div class="timing-item">
+    <div class="t-label">Prima della call</div>
+    <div class="t-value">10 min</div>
+    <div class="t-desc">Account da creare</div>
+  </div>
+  <div class="timing-item">
+    <div class="t-label">Durata call</div>
+    <div class="t-value">~30 min</div>
+    <div class="t-desc">Setup guidato</div>
+  </div>
+  <div class="timing-item">
+    <div class="t-label">API Keys</div>
+    <div class="t-value">5</div>
+    <div class="t-desc">Da configurare</div>
+  </div>
+  <div class="timing-item">
+    <div class="t-label">Costo stimato</div>
+    <div class="t-value">~$15</div>
+    <div class="t-desc">Al mese</div>
+  </div>
+</div>
+
+<!-- STEP 1: PRE-CALL -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-num">1</div>
+    <div class="section-title">Pre-call — Da comunicare al cliente in anticipo</div>
+    <div class="section-subtitle">10 min · il cliente fa da solo prima della call</div>
+  </div>
+  <div class="section-body">
+    <p style="font-size:12px;color:#64748b;margin-bottom:12px;">Manda questi link al cliente via messaggio prima della call. Deve solo <strong>creare gli account</strong>, non configurare nulla.</p>
+    <ul class="checklist">
+      <li><div class="check-box"></div><div><strong>GitHub</strong> — <span class="url">github.com</span> — Registrazione gratuita con email</div></li>
+      <li><div class="check-box"></div><div><strong>Railway</strong> — <span class="url">railway.app</span> — Si registra con l'account GitHub (un click)</div></li>
+      <li><div class="check-box"></div><div><strong>Anthropic</strong> — <span class="url">console.anthropic.com</span> — Richiede carta di credito (non addebita subito, $5 di credito gratuito)</div></li>
+      <li><div class="check-box"></div><div><strong>Groq</strong> — <span class="url">console.groq.com</span> — Gratuito, solo email</div></li>
+      <li><div class="check-box"></div><div><strong>Voyage AI</strong> — <span class="url">dash.voyageai.com</span> — Gratuito, solo email</div></li>
+      <li><div class="check-box"></div><div><strong>Notion</strong> — <span class="url">notion.so</span> — Potrebbe averlo già. Se no, gratuito</div></li>
+    </ul>
+    <div class="alert">
+      ⚠️ <span>Anthropic è l'unico che richiede carta di credito. Rassicura il cliente: non viene addebitato nulla automaticamente, i costi sono a consumo (tipicamente $3–10/mese).</span>
+    </div>
+  </div>
+</div>
+
+<!-- STEP 2: API KEYS -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-num">2</div>
+    <div class="section-title">In call — Raccolta API Key</div>
+    <div class="section-subtitle">~15 min · fai fare al cliente in sequenza</div>
+  </div>
+  <div class="section-body">
+    <p style="font-size:12px;color:#64748b;margin-bottom:14px;">Segui questo ordine. Per ogni servizio, guida il cliente schermo condiviso e incollate la chiave in un documento temporaneo (es. un blocco note) — servirà nel prossimo step.</p>
+
+    <div class="api-block">
+      <div class="api-header">
+        1 · Anthropic
+        <span class="api-tag">ANTHROPIC_API_KEY</span>
+      </div>
+      <div class="api-steps">
+        <ol>
+          <li>Vai su <span class="url">console.anthropic.com</span> → accedi</li>
+          <li>Menu sinistra → <strong>API Keys</strong></li>
+          <li>Clicca <strong>"Create Key"</strong> → nome: <em>"Brain"</em></li>
+          <li>Copia la chiave (inizia con <code>sk-ant-</code>) — viene mostrata <strong>una volta sola</strong></li>
+        </ol>
+        <div class="api-note">⚠️ Se non ha ancora aggiunto la carta: Settings → Billing → Add payment method. Senza carta la chiave non funziona.</div>
+      </div>
+    </div>
+
+    <div class="api-block">
+      <div class="api-header">
+        2 · Groq
+        <span class="api-tag">GROQ_API_KEY</span>
+      </div>
+      <div class="api-steps">
+        <ol>
+          <li>Vai su <span class="url">console.groq.com</span> → accedi</li>
+          <li>Menu sinistra → <strong>API Keys</strong></li>
+          <li>Clicca <strong>"Create API Key"</strong> → nome: <em>"Brain"</em></li>
+          <li>Copia la chiave (inizia con <code>gsk_</code>)</li>
+        </ol>
+        <div class="alert alert-ok">✓ Gratuito fino a 7.000 minuti/giorno di trascrizione — più che sufficiente.</div>
+      </div>
+    </div>
+
+    <div class="api-block">
+      <div class="api-header">
+        3 · Voyage AI
+        <span class="api-tag">VOYAGE_API_KEY</span>
+      </div>
+      <div class="api-steps">
+        <ol>
+          <li>Vai su <span class="url">dash.voyageai.com</span> → accedi</li>
+          <li>Clicca su <strong>API Keys</strong> nel menu</li>
+          <li>Clicca <strong>"Create new key"</strong> → nome: <em>"Brain"</em></li>
+          <li>Copia la chiave (inizia con <code>pa-</code>)</li>
+        </ol>
+        <div class="alert alert-ok">✓ Gratuito fino a 50 milioni di token/mese.</div>
+      </div>
+    </div>
+
+    <div class="api-block">
+      <div class="api-header">
+        4 · Notion — Integration Token
+        <span class="api-tag">NOTION_TOKEN</span>
+      </div>
+      <div class="api-steps">
+        <ol>
+          <li>Vai su <span class="url">notion.so/my-integrations</span></li>
+          <li>Clicca <strong>"+ New integration"</strong></li>
+          <li>Nome: <em>"Brain"</em> → seleziona il workspace → <strong>Submit</strong></li>
+          <li>Copia il campo <strong>"Internal Integration Secret"</strong> (inizia con <code>secret_</code>)</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="api-block">
+      <div class="api-header">
+        5 · Notion — Database
+        <span class="api-tag">NOTION_DATABASE_ID</span>
+      </div>
+      <div class="api-steps">
+        <ol>
+          <li>In Notion, crea una nuova pagina → aggiungi un blocco <strong>"Database — Full page"</strong></li>
+          <li>Nominalo <em>"Knowledge Base"</em></li>
+          <li>Aggiungi queste proprietà (nome esatto e tipo):</li>
+        </ol>
+        <table style="margin-top:10px;">
+          <tr><th>Nome proprietà</th><th>Tipo</th><th>Note</th></tr>
+          <tr><td><strong>Titolo</strong></td><td><span class="type-badge">Title</span></td><td>Già presente di default</td></tr>
+          <tr><td>Categoria</td><td><span class="type-badge">Select</span></td><td>—</td></tr>
+          <tr><td>Sotto-categoria</td><td><span class="type-badge">Text</span></td><td>—</td></tr>
+          <tr><td>Tipo Sessione</td><td><span class="type-badge">Select</span></td><td>—</td></tr>
+          <tr><td>Pubblico</td><td><span class="type-badge">Select</span></td><td>—</td></tr>
+          <tr><td>Sintesi</td><td><span class="type-badge">Text</span></td><td>—</td></tr>
+          <tr><td>Venditori Coinvolti</td><td><span class="type-badge">Multi-select</span></td><td>—</td></tr>
+          <tr><td>Tags</td><td><span class="type-badge">Multi-select</span></td><td>—</td></tr>
+          <tr><td>File Sorgente</td><td><span class="type-badge">Text</span></td><td>—</td></tr>
+          <tr><td>Data Elaborazione</td><td><span class="type-badge">Date</span></td><td>—</td></tr>
+        </table>
+        <ol style="margin-top:10px;">
+          <li value="4">Connetti l'integrazione: menu <strong>…</strong> in alto a destra → <strong>Connections</strong> → aggiungi <em>"Brain"</em></li>
+          <li>Apri il database nel browser → copia l'ID dall'URL:<br>
+          <code style="font-size:11px;">notion.so/workspace/<strong style="color:#1a6fd4">[QUESTO-È-IL-DATABASE-ID]</strong>?v=...</code><br>
+          È la stringa di 32 caratteri prima del <code>?</code></li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- STEP 3: GITHUB -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-num">3</div>
+    <div class="section-title">Fork del repo su GitHub</div>
+    <div class="section-subtitle">2 min</div>
+  </div>
+  <div class="section-body">
+    <ol class="steps">
+      <li>Vai su <span class="url">github.com/FPTSC/tsc-brain</span></li>
+      <li>Clicca <strong>"Use this template"</strong> → <strong>"Create a new repository"</strong></li>
+      <li>Nome repo: qualcosa tipo <em>nomecliente-brain</em> → <strong>Private</strong> → <strong>Create repository</strong></li>
+    </ol>
+  </div>
+</div>
+
+<!-- STEP 4: RAILWAY -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-num">4</div>
+    <div class="section-title">Deploy su Railway</div>
+    <div class="section-subtitle">~8 min</div>
+  </div>
+  <div class="section-body">
+    <ol class="steps">
+      <li>Vai su <span class="url">railway.app</span> → <strong>New Project</strong></li>
+      <li>Seleziona <strong>"Deploy from GitHub repo"</strong> → autorizza GitHub → scegli il repo appena creato</li>
+      <li>Aspetta che Railway completi il primo build (2–3 minuti)</li>
+      <li>Clicca sul servizio → tab <strong>Variables</strong> → aggiungi tutte queste variabili:</li>
+    </ol>
+
+    <table style="margin-top:12px;">
+      <tr><th>Variabile</th><th>Valore</th></tr>
+      <tr><td><span class="env-var">ANTHROPIC_API_KEY</span></td><td>La chiave Anthropic copiata prima</td></tr>
+      <tr><td><span class="env-var">GROQ_API_KEY</span></td><td>La chiave Groq copiata prima</td></tr>
+      <tr><td><span class="env-var">VOYAGE_API_KEY</span></td><td>La chiave Voyage AI copiata prima</td></tr>
+      <tr><td><span class="env-var">NOTION_TOKEN</span></td><td>Il token Notion (<code>secret_...</code>)</td></tr>
+      <tr><td><span class="env-var">NOTION_DATABASE_ID</span></td><td>L'ID del database Notion</td></tr>
+      <tr><td><span class="env-var">APP_USER</span></td><td>Username admin (es. <em>admin</em>)</td></tr>
+      <tr><td><span class="env-var">APP_PASSWORD</span></td><td>Password admin (min. 8 caratteri)</td></tr>
+      <tr><td><span class="env-var">USERS_FILE</span></td><td><code>/data/users.json</code></td></tr>
+    </table>
+
+    <ol class="steps" style="margin-top:14px;">
+      <li value="5">Crea il Volume: torna alla pagina del progetto → <strong>"+ New"</strong> → <strong>Volume</strong> → Mount Path: <code>/data</code></li>
+      <li>Railway fa un redeploy automatico — aspetta che diventi verde</li>
+    </ol>
+
+    <div class="alert">
+      ⚠️ <span>Railway richiede il piano <strong>Hobby ($5/mese)</strong> per il deploy continuo. Il piano gratuito va in sleep dopo inattività.</span>
+    </div>
+  </div>
+</div>
+
+<!-- STEP 5: PRIMO ACCESSO -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-num">5</div>
+    <div class="section-title">Primo accesso e test</div>
+    <div class="section-subtitle">5 min</div>
+  </div>
+  <div class="section-body">
+    <ol class="steps">
+      <li>Railway → tab <strong>Settings</strong> → copia il dominio pubblico (es. <code>xxx.up.railway.app</code>)</li>
+      <li>Apri il dominio nel browser → inserisci <strong>APP_USER</strong> e <strong>APP_PASSWORD</strong> impostati prima</li>
+      <li>Vai su <code>/admin</code> → crea un account per ogni membro del team del cliente (non admin)</li>
+      <li>Test finale: dalla home clicca l'icona microfono → carica un file audio di test → verifica che l'analisi arrivi correttamente</li>
+    </ol>
+    <div class="alert alert-ok">
+      ✓ <span>Se l'analisi arriva, il sistema è completamente funzionante. Il database è vuoto — si popola man mano che vengono caricate le call.</span>
+    </div>
+  </div>
+</div>
+
+<!-- COSTI -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-num">6</div>
+    <div class="section-title">Riepilogo costi mensili stimati</div>
+    <div class="section-subtitle">da comunicare al cliente</div>
+  </div>
+  <div class="section-body">
+    <table>
+      <tr><th>Servizio</th><th>Piano</th><th>Costo</th><th>Note</th></tr>
+      <tr><td>Railway</td><td>Hobby</td><td><strong>$5/mese</strong></td><td>Obbligatorio per deploy continuo</td></tr>
+      <tr><td>Anthropic</td><td>Pay-per-use</td><td><strong>$3–10/mese</strong></td><td>Dipende dalle call analizzate</td></tr>
+      <tr><td>Groq</td><td>Free</td><td><strong>$0</strong></td><td>Fino a 7.000 min/giorno</td></tr>
+      <tr><td>Voyage AI</td><td>Free</td><td><strong>$0</strong></td><td>Fino a 50M token/mese</td></tr>
+      <tr><td>Notion</td><td>Free / Plus</td><td><strong>$0–16/mese</strong></td><td>Free spesso sufficiente</td></tr>
+      <tr style="background:#f0fdf4;"><td colspan="2"><strong>Totale stimato</strong></td><td><strong>$8–25/mese</strong></td><td>Per team di 5–10 persone</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- TROUBLESHOOTING -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-num">!</div>
+    <div class="section-title">Problemi comuni</div>
+    <div class="section-subtitle">riferimento rapido</div>
+  </div>
+  <div class="section-body">
+    <table>
+      <tr><th>Problema</th><th>Causa probabile</th><th>Soluzione</th></tr>
+      <tr><td>App non si apre (502)</td><td>Deploy ancora in corso</td><td>Aspetta 2–3 minuti e ricarica</td></tr>
+      <tr><td>Analisi non parte</td><td>GROQ_API_KEY mancante</td><td>Controlla le variabili Railway</td></tr>
+      <tr><td>Analisi parte ma non salva in Notion</td><td>Database non connesso all'integrazione</td><td>Notion → database → Connections → aggiungi "Brain"</td></tr>
+      <tr><td>Errore 401 al login</td><td>APP_USER/APP_PASSWORD errati</td><td>Controlla le variabili Railway</td></tr>
+      <tr><td>Utenti si perdono dopo deploy</td><td>Volume non configurato</td><td>Crea Volume con mount path <code>/data</code> e aggiungi <code>USERS_FILE=/data/users.json</code></td></tr>
+    </table>
+  </div>
+</div>
+
+<div class="footer">
+  <span>Theta Sales Consulting — Uso interno</span>
+  <span>Brain Knowledge Base — Guida Onboarding</span>
+</div>
+
+</body>
+</html>
