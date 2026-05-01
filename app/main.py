@@ -466,7 +466,7 @@ async def ingest_text(
     request: Request,
     file: UploadFile = File(...),
     title: str = Form(""),
-    _=Depends(_check_auth),
+    _=Depends(_check_admin),
 ):
     content = await file.read()
     try:

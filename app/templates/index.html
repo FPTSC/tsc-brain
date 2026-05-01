@@ -7,48 +7,6 @@
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-  <!-- Text ingest modal -->
-  <div id="textModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4" style="background:rgba(5,10,21,0.85);backdrop-filter:blur(6px);">
-    <div class="glass rounded-2xl w-full max-w-lg shadow-2xl flex flex-col" style="max-height:90vh;">
-      <div class="flex items-center justify-between px-5 py-4 border-b border-brand/20">
-        <div class="flex items-center gap-2">
-          <svg class="w-4 h-4 text-brand-light" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-          <span class="text-sm font-semibold text-slate-200">Carica documento nel Brain</span>
-        </div>
-        <button onclick="closeTextModal()" class="text-slate-500 hover:text-slate-300 transition-colors">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-        </button>
-      </div>
-      <div class="flex-1 overflow-y-auto px-5 py-4 space-y-4">
-        <p class="text-xs text-slate-500 leading-relaxed">Carica un file <span class="text-slate-300">.txt</span> già scritto — script, procedure, guide, trascrizioni. Claude lo strutturerà e lo salverà nel Brain come documento consultabile.</p>
-        <div>
-          <label class="text-xs text-slate-400 uppercase tracking-widest font-semibold mb-1.5 block">File di testo <span class="text-red-400">*</span></label>
-          <label for="textFileInput" class="flex items-center gap-3 cursor-pointer border border-slate-700 hover:border-brand rounded-xl px-4 py-3 transition-all">
-            <svg class="w-5 h-5 text-slate-500 flex-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-            <span id="textFileName" class="text-sm text-slate-500">Seleziona file .txt...</span>
-          </label>
-          <input type="file" id="textFileInput" accept=".txt" class="hidden" onchange="onTextFileChange(this)"/>
-        </div>
-        <div>
-          <label class="text-xs text-slate-400 uppercase tracking-widest font-semibold mb-1.5 block">Titolo <span class="text-slate-600 normal-case font-normal">(opzionale)</span></label>
-          <input id="textTitle" type="text" placeholder="Lascia vuoto per titolo auto-generato"
-            class="w-full bg-navy-950 border border-slate-700 glow-input rounded-xl px-4 py-2.5 text-sm text-slate-200 placeholder-slate-600 transition-all"/>
-        </div>
-        <div id="textStatus" class="hidden text-xs text-brand-light flex items-center gap-2">
-          <div class="flex gap-1"><div class="w-1.5 h-1.5 rounded-full bg-brand-light dot-1"></div><div class="w-1.5 h-1.5 rounded-full bg-brand-light dot-2"></div><div class="w-1.5 h-1.5 rounded-full bg-brand-light dot-3"></div></div>
-          <span id="textStatusText">Elaborazione in corso...</span>
-        </div>
-        <div id="textSuccess" class="hidden p-3 bg-green-900/20 border border-green-500/30 rounded-xl text-sm text-green-400"></div>
-        <div id="textError" class="hidden p-3 bg-red-900/20 border border-red-500/30 rounded-xl text-sm text-red-400"></div>
-      </div>
-      <div class="px-5 py-4 border-t border-brand/20">
-        <button id="textSaveBtn" onclick="submitText()" class="btn-send w-full text-white py-3 rounded-xl disabled:opacity-40 disabled:cursor-not-allowed text-sm font-semibold">
-          Carica nel Brain
-        </button>
-      </div>
-    </div>
-  </div>
-
   <!-- Coaching modal -->
   <div id="coachingModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4" style="background:rgba(5,10,21,0.85);backdrop-filter:blur(6px);">
     <div class="glass rounded-2xl w-full max-w-lg shadow-2xl flex flex-col" style="max-height:90vh;">
@@ -174,11 +132,7 @@
         </div>
       </div>
       <div class="flex items-center gap-2">
-        <button onclick="openTextModal()" class="flex items-center gap-1.5 text-xs text-slate-400 hover:text-brand-light border border-slate-700 hover:border-brand px-2.5 sm:px-3 py-2 rounded-lg transition-all">
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-          <span class="hidden sm:inline">Carica doc</span>
-        </button>
-        <button onclick="openCoachingModal()" class="flex items-center gap-1.5 text-xs text-brand-light hover:text-white border border-brand/40 hover:border-brand bg-brand/10 hover:bg-brand/20 px-2.5 sm:px-3 py-2 rounded-lg transition-all">
+<button onclick="openCoachingModal()" class="flex items-center gap-1.5 text-xs text-brand-light hover:text-white border border-brand/40 hover:border-brand bg-brand/10 hover:bg-brand/20 px-2.5 sm:px-3 py-2 rounded-lg transition-all">
           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
           <span class="hidden sm:inline">Salva nel Brain</span>
         </button>
@@ -408,73 +362,6 @@
       };
       setTimeout(poll, 2000);
     });
-
-    function openTextModal() {
-      document.getElementById('textModal').classList.remove('hidden');
-      document.getElementById('textSuccess').classList.add('hidden');
-      document.getElementById('textError').classList.add('hidden');
-    }
-
-    function closeTextModal() {
-      document.getElementById('textModal').classList.add('hidden');
-    }
-
-    function onTextFileChange(input) {
-      const name = input.files[0] ? input.files[0].name : 'Seleziona file .txt...';
-      document.getElementById('textFileName').textContent = name;
-      document.getElementById('textFileName').classList.toggle('text-slate-200', !!input.files[0]);
-      document.getElementById('textFileName').classList.toggle('text-slate-500', !input.files[0]);
-    }
-
-    async function submitText() {
-      const fileInput = document.getElementById('textFileInput');
-      const title = document.getElementById('textTitle').value.trim();
-      const saveBtn = document.getElementById('textSaveBtn');
-      const statusEl = document.getElementById('textStatus');
-      const successEl = document.getElementById('textSuccess');
-      const errorEl = document.getElementById('textError');
-
-      successEl.classList.add('hidden');
-      errorEl.classList.add('hidden');
-
-      if (!fileInput.files[0]) {
-        errorEl.textContent = 'Seleziona un file .txt.';
-        errorEl.classList.remove('hidden');
-        return;
-      }
-
-      saveBtn.disabled = true;
-      statusEl.classList.remove('hidden');
-      document.getElementById('textStatusText').textContent = 'Analisi e salvataggio in corso...';
-
-      try {
-        const fd = new FormData();
-        fd.append('file', fileInput.files[0]);
-        fd.append('title', title);
-        const resp = await fetch('/api/ingest-text', { method: 'POST', body: fd });
-        const data = await resp.json();
-        statusEl.classList.add('hidden');
-        if (data.error) {
-          errorEl.textContent = data.error;
-          errorEl.classList.remove('hidden');
-        } else {
-          successEl.innerHTML = `Salvato nel Brain: <a href="${data.url}" target="_blank" class="underline font-semibold">${esc(data.titolo)}</a>`;
-          successEl.classList.remove('hidden');
-          fileInput.value = '';
-          document.getElementById('textFileName').textContent = 'Seleziona file .txt...';
-          document.getElementById('textTitle').value = '';
-          fetch('/api/status').then(r => r.json()).then(d => {
-            document.getElementById('docCount').textContent = d.doc_count + ' sessioni indicizzate';
-          });
-        }
-      } catch {
-        statusEl.classList.add('hidden');
-        errorEl.textContent = 'Errore di connessione. Riprova.';
-        errorEl.classList.remove('hidden');
-      } finally {
-        saveBtn.disabled = false;
-      }
-    }
 
     function openCoachingModal() {
       document.getElementById('coachingModal').classList.remove('hidden');
