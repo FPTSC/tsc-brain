@@ -455,6 +455,44 @@ async def analyze_status(job_id: str, _=Depends(_check_auth)):
     return JSONResponse({"status": "done", **result})
 
 
+@app.post("/api/ingest-text")
+async def ingest_text(
+    request: Request,
+    file: UploadFile = File(...),
+    title: str = Form(""),
+    _=Depends(_check_auth),
+):
+    content = await file.read()
+    try:
+        text = content.decode("utf-8")
+    except UnicodeDecodeError:
+        try:
+            text = content.decode("latin-1")
+        except Exception:
+            return JSONResponse(
+                {"error": "Impossibile leggere il file. Usa un file .txt in UTF-8."},
+                status_code=400,
+            )
+
+    if not text.strip():
+        return JSONResponse({"error": "Il file è vuoto."}, status_code=400)
+
+    try:
+        data = await asyncio.to_thread(extract_call_data, text)
+    except Exception as e:
+        return JSONResponse({"error": f"Errore nell'analisi del documento: {e}"}, status_code=500)
+
+    doc_title = title.strip() or data.get("titolo") or file.filename
+    data["titolo"] = doc_title
+
+    try:
+        notion_url = await asyncio.to_thread(save_call, file.filename, text, data)
+    except Exception as e:
+        return JSONResponse({"error": f"Errore salvataggio Notion: {e}"}, status_code=500)
+
+    return JSONResponse({"url": notion_url, "titolo": doc_title})
+
+
 @app.post("/api/save-coaching")
 async def save_coaching(
     request: Request,
