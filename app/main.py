@@ -18,7 +18,7 @@ import bcrypt
 import anthropic
 from groq import Groq
 
-from config.settings import ANTHROPIC_API_KEY, CLAUDE_MODEL, GROQ_API_KEY
+from config.settings import ANTHROPIC_API_KEY, CLAUDE_MODEL, GROQ_API_KEY, FATHOM_API_KEY
 from src.vectorstore.client import search, count
 from src.processor.extractor import extract_call_data, extract_from_coaching
 from src.notion.client import save_call
@@ -78,6 +78,7 @@ def _verify_credentials(credentials: HTTPBasicCredentials) -> tuple[bool, dict |
     return valid, {"hash": "", "admin": True} if valid else None
 PORT = int(os.environ.get("PORT", 9001))
 REBUILD_INTERVAL = int(os.environ.get("REBUILD_INTERVAL_SECONDS", "3600"))
+FATHOM_INTERVAL = int(os.environ.get("FATHOM_INTERVAL_SECONDS", "300"))
 
 app = FastAPI(title="TSC Brain")
 app.mount("/static", StaticFiles(directory=str(Path(__file__).parent / "static")), name="static")
@@ -258,6 +259,25 @@ async def _periodic_rebuild():
         await _run_rebuild_async()
 
 
+async def _periodic_fathom():
+    if not FATHOM_API_KEY:
+        print("[fathom] FATHOM_API_KEY not set — skipping", flush=True)
+        return
+    from src.pipeline import run as pipeline_run
+    print(f"[fathom] periodic task started — interval {FATHOM_INTERVAL}s", flush=True)
+    while True:
+        await asyncio.sleep(FATHOM_INTERVAL)
+        try:
+            n = await asyncio.to_thread(pipeline_run)
+            if n:
+                print(f"[fathom] {n} nuove sessioni importate, avvio rebuild", flush=True)
+                await _run_rebuild_async()
+            else:
+                print("[fathom] nessuna nuova sessione", flush=True)
+        except Exception as exc:
+            print(f"[fathom] errore: {exc}", flush=True)
+
+
 def _spawn(coro):
     task = asyncio.create_task(coro)
     _bg_tasks.add(task)
@@ -268,6 +288,7 @@ def _spawn(coro):
 async def startup_event():
     _spawn(_init_background())
     _spawn(_periodic_rebuild())
+    _spawn(_periodic_fathom())
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -342,19 +363,21 @@ async def query(request: Request, question: str = Form(...), history: str = Form
     })
 
 
-_GROQ_LIMIT = 24 * 1024 * 1024  # 24MB safety margin
+_GROQ_LIMIT = 24 * 1024 * 1024  # 24 MB safety margin (Groq limit is 25 MB)
+_CHUNK_SECONDS = 1200  # 20-minute chunks when splitting
 
 
 def _compress_audio(content: bytes, filename: str) -> tuple[bytes, str]:
-    import tempfile, subprocess, os
+    import tempfile, subprocess as sp
     ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else "mp3"
     with tempfile.NamedTemporaryFile(suffix=f".{ext}", delete=False) as f:
         f.write(content)
         input_path = f.name
     output_path = input_path + "_out.mp3"
     try:
-        result = subprocess.run(
-            ["ffmpeg", "-y", "-i", input_path, "-ac", "1", "-ar", "16000", "-b:a", "64k", output_path],
+        # 32 kbps mono 16 kHz — handles up to ~1h45m within the 24 MB limit
+        result = sp.run(
+            ["ffmpeg", "-y", "-i", input_path, "-ac", "1", "-ar", "16000", "-b:a", "32k", output_path],
             capture_output=True, timeout=300,
         )
         if result.returncode != 0:
@@ -367,22 +390,57 @@ def _compress_audio(content: bytes, filename: str) -> tuple[bytes, str]:
             os.unlink(output_path)
 
 
-async def _transcribe(content: bytes, filename: str) -> str:
-    """Transcribes audio with Groq Whisper, compressing first if needed."""
-    audio_name = filename
-    if len(content) > _GROQ_LIMIT:
-        content, audio_name = await asyncio.to_thread(_compress_audio, content, filename)
-    if len(content) > _GROQ_LIMIT:
-        raise ValueError("File troppo grande anche dopo la compressione.")
-    transcription = await asyncio.to_thread(
-        lambda: _groq.audio.transcriptions.create(
-            file=(audio_name, content),
-            model="whisper-large-v3-turbo",
-            language="it",
-            response_format="text",
+def _chunk_audio(content: bytes) -> list[tuple[bytes, str]]:
+    """Split compressed audio into ~20-minute chunks for very long calls."""
+    import tempfile, subprocess as sp, glob as glob_mod
+    with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as f:
+        f.write(content)
+        input_path = f.name
+    tmpdir = tempfile.mkdtemp()
+    pattern = os.path.join(tmpdir, "chunk_%03d.mp3")
+    try:
+        result = sp.run(
+            ["ffmpeg", "-y", "-i", input_path, "-f", "segment",
+             "-segment_time", str(_CHUNK_SECONDS), "-ac", "1", "-ar", "16000", "-b:a", "32k", pattern],
+            capture_output=True, timeout=600,
         )
+        if result.returncode != 0:
+            raise RuntimeError(f"ffmpeg chunk: {result.stderr.decode()[-300:]}")
+        chunks = sorted(glob_mod.glob(os.path.join(tmpdir, "chunk_*.mp3")))
+        return [(open(p, "rb").read(), os.path.basename(p)) for p in chunks]
+    finally:
+        os.unlink(input_path)
+        for p in glob_mod.glob(os.path.join(tmpdir, "chunk_*.mp3")):
+            os.unlink(p)
+        try:
+            os.rmdir(tmpdir)
+        except OSError:
+            pass
+
+
+def _transcribe_single(audio_name: str, content: bytes) -> str:
+    t = _groq.audio.transcriptions.create(
+        file=(audio_name, content),
+        model="whisper-large-v3-turbo",
+        language="it",
+        response_format="text",
     )
-    return transcription if isinstance(transcription, str) else transcription.text
+    return t if isinstance(t, str) else t.text
+
+
+async def _transcribe(content: bytes, filename: str) -> str:
+    """Transcribes audio with Groq Whisper. Compresses first; chunks if still over limit."""
+    if len(content) > _GROQ_LIMIT:
+        content, filename = await asyncio.to_thread(_compress_audio, content, filename)
+    if len(content) <= _GROQ_LIMIT:
+        return await asyncio.to_thread(_transcribe_single, filename, content)
+    # Still too large (call longer than ~1h45m): split into 20-minute chunks
+    chunks = await asyncio.to_thread(_chunk_audio, content)
+    parts = []
+    for chunk_content, chunk_name in chunks:
+        part = await asyncio.to_thread(_transcribe_single, chunk_name, chunk_content)
+        parts.append(part)
+    return "\n".join(parts)
 
 
 def _cleanup_jobs():
@@ -496,6 +554,7 @@ async def ingest_text(
     except Exception as e:
         return JSONResponse({"error": f"Errore salvataggio Notion: {e}"}, status_code=500)
 
+    _spawn(_run_rebuild_async())
     return JSONResponse({"url": notion_url, "titolo": doc_title})
 
 
@@ -533,4 +592,5 @@ async def save_coaching(
     except Exception as e:
         return JSONResponse({"error": f"Errore salvataggio Notion: {e}"}, status_code=500)
 
+    _spawn(_run_rebuild_async())
     return JSONResponse({"url": notion_url, "titolo": call_title})

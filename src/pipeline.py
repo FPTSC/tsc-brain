@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 from pathlib import Path
 
 from src.fathom.client import list_new_recordings, get_transcript
@@ -8,7 +9,9 @@ from src.notion.client import save_call
 
 logger = logging.getLogger(__name__)
 
-_STATE_FILE = Path("processed_ids.json")
+# Store alongside users.json so it survives Railway deploys on the /data volume.
+_DATA_DIR = Path(os.environ.get("USERS_FILE", str(Path(__file__).parent.parent / "users.json"))).parent
+_STATE_FILE = _DATA_DIR / "processed_ids.json"
 
 
 def _load_processed() -> set[str]:
