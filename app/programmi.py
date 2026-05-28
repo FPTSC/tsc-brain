@@ -179,8 +179,11 @@ def generate_pdf(numero: int, client_name: str, titolo: str, riepilogo: str,
     return bytes(pdf.output())
 
 
-def create(transcript: str, client_name: str, created_by: str, claude_client) -> dict:
+def create(transcript: str, client_name: str, created_by: str, claude_client=None) -> dict:
     """Main entry point. Returns {tipo, programma?} or raises on error."""
+    if claude_client is None:
+        import anthropic
+        claude_client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
     result = classify(transcript, client_name, claude_client)
     tipo   = result.get("tipo", "formazione_consulenza")
 

@@ -6,6 +6,7 @@ from pathlib import Path
 from src.fathom.client import list_new_recordings, get_transcript
 from src.processor.extractor import extract_call_data
 from src.notion.client import save_call
+from app import programmi
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +54,13 @@ def run() -> int:
             _save_processed(processed)
             count += 1
             logger.info(f"Salvato in Notion: {page_url}")
+
+            try:
+                po = programmi.create(transcript, title, "fathom")
+                if po.get("tipo") == "programma_operativo":
+                    logger.info(f"Programma Operativo creato: {po['programma']['titolo']}")
+            except Exception as po_err:
+                logger.warning(f"PO skip per '{title}': {po_err}")
         except Exception as e:
             logger.error(f"Errore su {title}: {e}")
 
