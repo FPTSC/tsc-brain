@@ -43,16 +43,26 @@ def next_numero(client_name: str) -> int:
 
 
 def classify(text: str, client_name: str, claude_client) -> dict:
-    prompt = f"""Analizza questa trascrizione di una chiamata TSC con il cliente "{client_name}".
+    prompt = f"""Sei un assistente che analizza trascrizioni di chiamate aziendali in italiano.
 
-Determina il tipo:
-- "formazione_consulenza": coaching, revisione call, addestramento, metodologia, analisi performance (nessuna attività operativa nuova)
-- "programma_operativo": pianificazione di attività concrete, deliverable, campagne, setup, decisioni operative con next steps chiari
+Analizza questa chiamata tra TSC e il cliente "{client_name}".
 
-Se è "programma_operativo":
-- titolo breve descrittivo (es. "Setup CRM Maggio", "Lancio Campagna Social")
+Classifica come "programma_operativo" se nella chiamata emerge ALMENO UNA di queste situazioni:
+- qualcuno dice cosa deve fare (es. "devo mandare", "lo facciamo noi", "dobbiamo sistemare", "bisogna fare")
+- vengono assegnate responsabilità concrete (es. "ci penso io", "lo fai tu", "lo facciamo noi")
+- si pianifica la creazione di qualcosa (piattaforma, documento, campagna, script, processo)
+- si fissano scadenze o priorità (es. "entro quando", "la prossima settimana", "più urgente")
+- si decide di procurarsi qualcosa o qualcuno (coach, risorsa, strumento)
+- si parla di materiali da inviare o ricevere
+
+Classifica come "formazione_consulenza" SOLO se la chiamata è interamente dedicata a coaching, revisione performance, metodologia di vendita, o analisi di call passate — senza nessuna azione concreta assegnata.
+
+In caso di dubbio, scegli "programma_operativo".
+
+Se è "programma_operativo", estrai:
+- titolo breve (es. "Piattaforma Team + Reclutamento Coach")
 - riepilogo in 2-3 frasi di cosa è stato deciso
-- lista attività: descrizione + responsabile (TSC/Cliente/Entrambi) + scadenza (null se non specificata)
+- ogni attività menzionata, anche implicitamente: chi deve fare cosa
 
 Rispondi SOLO con JSON valido:
 {{
