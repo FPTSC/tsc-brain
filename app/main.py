@@ -308,6 +308,21 @@ async def index(_=Depends(_check_auth)):
 @app.post("/api/rebuild")
 async def rebuild(_=Depends(_check_auth)):
     _spawn(_run_rebuild_async())
+
+
+@app.post("/api/run-pipeline")
+async def run_pipeline_now(_=Depends(_check_admin)):
+    async def _run():
+        try:
+            from src.pipeline import run as pipeline_run
+            n = await asyncio.to_thread(pipeline_run)
+            print(f"[pipeline-manual] {n} sessioni elaborate", flush=True)
+            if n:
+                await _run_rebuild_async()
+        except Exception as e:
+            print(f"[pipeline-manual] errore: {e}", flush=True)
+    _spawn(_run())
+    return JSONResponse({"ok": True, "msg": "Pipeline avviata — controlla i log Railway"})
     return JSONResponse({"status": "rebuild started"})
 
 
