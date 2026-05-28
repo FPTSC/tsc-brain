@@ -10,6 +10,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from fastapi import FastAPI, Request, Form, File, UploadFile, Depends, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
@@ -22,9 +23,11 @@ from config.settings import ANTHROPIC_API_KEY, CLAUDE_MODEL, GROQ_API_KEY, FATHO
 from src.vectorstore.client import search, count
 from src.processor.extractor import extract_call_data, extract_from_coaching
 from src.notion.client import save_call
+from app import programmi
 
-APP_PASSWORD = os.environ.get("APP_PASSWORD", "tsc2024")
-APP_USER = os.environ.get("APP_USER", "tsc")
+APP_PASSWORD     = os.environ.get("APP_PASSWORD", "tsc2024")
+APP_USER         = os.environ.get("APP_USER", "tsc")
+HATTING_API_KEY  = os.environ.get("HATTING_API_KEY", "")
 
 USERS_FILE_PATH = Path(os.environ.get("USERS_FILE", str(Path(__file__).parent.parent / "users.json")))
 _USERS_LOCK = threading.Lock()
@@ -81,6 +84,12 @@ REBUILD_INTERVAL = int(os.environ.get("REBUILD_INTERVAL_SECONDS", "3600"))
 FATHOM_INTERVAL = int(os.environ.get("FATHOM_INTERVAL_SECONDS", "300"))
 
 app = FastAPI(title="TSC Brain")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["GET", "POST"],
+    allow_headers=["*"],
+)
 app.mount("/static", StaticFiles(directory=str(Path(__file__).parent / "static")), name="static")
 
 security = HTTPBasic()
@@ -524,6 +533,7 @@ async def ingest_text(
     request: Request,
     file: UploadFile = File(...),
     title: str = Form(""),
+    client_name: str = Form(""),
     _=Depends(_check_admin),
 ):
     content = await file.read()
@@ -555,7 +565,19 @@ async def ingest_text(
         return JSONResponse({"error": f"Errore salvataggio Notion: {e}"}, status_code=500)
 
     _spawn(_run_rebuild_async())
-    return JSONResponse({"url": notion_url, "titolo": doc_title})
+
+    result: dict = {"url": notion_url, "titolo": doc_title, "programma_operativo": None}
+
+    if client_name.strip():
+        try:
+            po = await asyncio.to_thread(
+                programmi.create, text, client_name.strip(), "admin", _claude
+            )
+            result["programma_operativo"] = po
+        except Exception as e:
+            result["programma_operativo"] = {"error": str(e)}
+
+    return JSONResponse(result)
 
 
 @app.post("/api/save-coaching")
@@ -594,3 +616,40 @@ async def save_coaching(
 
     _spawn(_run_rebuild_async())
     return JSONResponse({"url": notion_url, "titolo": call_title})
+
+
+# ── Programmi Operativi ───────────────────────────────────────────────────────
+
+def _check_po_key(request: Request):
+    key = request.headers.get("X-API-Key", "")
+    if not HATTING_API_KEY or key != HATTING_API_KEY:
+        raise HTTPException(status_code=401, detail="API key non valida")
+
+
+@app.post("/api/programma-operativo")
+async def create_po(request: Request, _=Depends(_check_po_key)):
+    body        = await request.json()
+    transcript  = body.get("transcript", "").strip()
+    client_name = body.get("client_name", "").strip()
+    created_by  = body.get("created_by", "hatting")
+    if not transcript or not client_name:
+        raise HTTPException(400, "transcript e client_name obbligatori")
+    result = await asyncio.to_thread(programmi.create, transcript, client_name, created_by, _claude)
+    return JSONResponse(result)
+
+
+@app.get("/api/programmi-operativi/{client_name}")
+async def list_po(client_name: str):
+    idx = programmi.load_index()
+    return JSONResponse({"programmi": idx.get(client_name, [])})
+
+
+@app.get("/api/po-pdf/{filename}")
+async def get_po_pdf(filename: str):
+    if ".." in filename or "/" in filename or "\\" in filename:
+        raise HTTPException(400, "Filename non valido")
+    path = programmi.PO_DIR / filename
+    if not path.exists():
+        raise HTTPException(404, "File non trovato")
+    return FileResponse(str(path), media_type="application/pdf",
+                        headers={"Content-Disposition": f'inline; filename="{filename}"'})

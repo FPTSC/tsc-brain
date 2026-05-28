@@ -143,6 +143,11 @@
           <input id="textTitle" type="text" placeholder="Lascia vuoto per titolo auto-generato"
             class="w-full bg-navy-950 border border-slate-700 glow-input rounded-xl px-4 py-2.5 text-sm text-slate-200 placeholder-slate-600 transition-all"/>
         </div>
+        <div>
+          <label class="text-xs text-slate-400 uppercase tracking-widest font-semibold mb-1.5 block">Cliente <span class="text-slate-600 normal-case font-normal">(se presente → genera Programma Operativo automaticamente)</span></label>
+          <input id="textClientName" type="text" placeholder="Es. Mario Rossi Srl — lascia vuoto per doc formazione/coaching"
+            class="w-full bg-navy-950 border border-slate-700 glow-input rounded-xl px-4 py-2.5 text-sm text-slate-200 placeholder-slate-600 transition-all"/>
+        </div>
         <div id="textStatus" class="hidden text-xs text-brand-light flex items-center gap-2">
           <svg class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
           <span>Analisi e salvataggio in corso...</span>
@@ -283,9 +288,11 @@
       statusEl.classList.remove('hidden');
 
       try {
+        const clientName = (document.getElementById('textClientName')?.value || '').trim();
         const fd = new FormData();
         fd.append('file', fileInput.files[0]);
         fd.append('title', title);
+        fd.append('client_name', clientName);
         const resp = await fetch('/api/ingest-text', { method: 'POST', body: fd });
         const data = await resp.json();
         statusEl.classList.add('hidden');
@@ -293,7 +300,16 @@
           errorEl.textContent = data.error;
           errorEl.classList.remove('hidden');
         } else {
-          successEl.innerHTML = `Salvato nel Brain: <a href="${data.url}" target="_blank" class="underline font-semibold">${esc(data.titolo)}</a>`;
+          let html = `Salvato nel Brain: <a href="${data.url}" target="_blank" class="underline font-semibold">${esc(data.titolo)}</a>`;
+          const po = data.programma_operativo;
+          if (po && po.tipo === 'programma_operativo' && po.programma) {
+            html += `<br><span style="color:#00C896">✓ Programma Operativo N° ${String(po.programma.numero).padStart(2,'0')} creato: <strong>${esc(po.programma.titolo)}</strong></span>`;
+          } else if (po && po.tipo === 'formazione_consulenza') {
+            html += `<br><span style="color:#888">Classificata come: formazione/consulenza</span>`;
+          } else if (po && po.error) {
+            html += `<br><span style="color:#FF8080">PO non creato: ${esc(po.error)}</span>`;
+          }
+          successEl.innerHTML = html;
           successEl.classList.remove('hidden');
           fileInput.value = '';
           document.getElementById('textFileName').textContent = 'Seleziona file .txt...';
