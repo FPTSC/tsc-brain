@@ -1,6 +1,7 @@
 import asyncio
 import json
 import os
+import re
 import sys
 import threading
 import time
@@ -631,6 +632,140 @@ async def save_coaching(
 
     _spawn(_run_rebuild_async())
     return JSONResponse({"url": notion_url, "titolo": call_title})
+
+
+# ── Sessions Analysis ────────────────────────────────────────────────────────
+
+_CAT_ORDER = [
+    "formazione_vendita", "formazione_chat", "reclutamento", "revisione_call",
+    "strategia_cliente", "onboarding_cliente", "programma_operativo",
+    "interno_tsc", "altro", "nessuna_trascrizione", "errore",
+]
+
+_SESSIONS_ANALYSIS_PROMPT = """Analizza questa sessione TSC e rispondi SOLO con JSON valido, nessun altro testo.
+
+Titolo Fathom: "{title}"
+Trascrizione (primi 5000 caratteri):
+{transcript}
+
+Genera:
+- "titolo": titolo descrittivo in italiano (max 65 caratteri), dice esattamente cosa è stato trattato
+- "categoria": una di ["formazione_vendita","formazione_chat","reclutamento","programma_operativo","revisione_call","strategia_cliente","onboarding_cliente","interno_tsc","altro"]
+- "riassunto": 2 frasi max che spiegano il contenuto principale della sessione
+- "cliente": nome del cliente se identificabile, altrimenti null
+
+JSON valido:"""
+
+
+async def _run_sessions_analysis(job_id: str):
+    import requests as _req
+
+    def _list_all():
+        recs, cursor = [], None
+        while True:
+            params = {"limit": 50}
+            if cursor:
+                params["cursor"] = cursor
+            r = _req.get(
+                f"https://api.fathom.ai/external/v1/meetings",
+                headers={"X-Api-Key": FATHOM_API_KEY}, params=params,
+            )
+            r.raise_for_status()
+            body = r.json()
+            recs.extend(body.get("items", []))
+            cursor = body.get("next_cursor")
+            if not cursor:
+                break
+        return recs
+
+    def _get_transcript(recording_id):
+        r = _req.get(
+            f"https://api.fathom.ai/external/v1/recordings/{recording_id}/transcript",
+            headers={"X-Api-Key": FATHOM_API_KEY},
+        )
+        if r.status_code != 200:
+            return ""
+        lines = []
+        for seg in r.json().get("transcript", []):
+            speaker = seg.get("speaker", {}).get("display_name", "Unknown")
+            text = seg.get("text", "").strip()
+            if text:
+                lines.append(f"{speaker}: {text}")
+        return "\n".join(lines)
+
+    def _analyze(title, transcript):
+        prompt = _SESSIONS_ANALYSIS_PROMPT.format(title=title, transcript=transcript[:5000])
+        resp = _claude.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=400,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        raw = resp.content[0].text.strip()
+        raw = re.sub(r"^```[a-z]*\n?", "", raw)
+        raw = re.sub(r"\n?```$", "", raw)
+        return json.loads(raw)
+
+    try:
+        _jobs[job_id]["progress"] = "Recupero lista sessioni da Fathom..."
+        recordings = await asyncio.to_thread(_list_all)
+        total = len(recordings)
+        results = []
+
+        for i, rec in enumerate(recordings):
+            rec_id       = str(rec["recording_id"])
+            fathom_title = rec.get("title") or f"recording_{rec_id}"
+            date_str     = (rec.get("started_at") or "")[:10]
+            _jobs[job_id]["progress"] = f"[{i+1}/{total}] {fathom_title[:55]}"
+
+            try:
+                transcript = await asyncio.to_thread(_get_transcript, rec_id)
+                if not transcript.strip():
+                    results.append({"id": rec_id, "data": date_str, "fathom_title": fathom_title,
+                                    "titolo": fathom_title, "categoria": "nessuna_trascrizione",
+                                    "riassunto": "Trascrizione non disponibile.", "cliente": None})
+                    continue
+                analysis = await asyncio.to_thread(_analyze, fathom_title, transcript)
+                analysis.update({"id": rec_id, "data": date_str, "fathom_title": fathom_title})
+                results.append(analysis)
+            except Exception as e:
+                results.append({"id": rec_id, "data": date_str, "fathom_title": fathom_title,
+                                "titolo": fathom_title, "categoria": "errore",
+                                "riassunto": str(e), "cliente": None})
+            await asyncio.sleep(0.2)
+
+        out = programmi._DATA_DIR / "sessions_analysis.json"
+        out.write_text(json.dumps(results, ensure_ascii=False, indent=2), encoding="utf-8")
+        _jobs[job_id].update({"status": "done", "results": results, "total": total})
+
+    except Exception as e:
+        _jobs[job_id].update({"status": "error", "error": str(e)})
+
+
+@app.post("/api/sessions-analysis")
+async def sessions_analysis_start(_: str = Depends(_check_admin)):
+    if not FATHOM_API_KEY:
+        raise HTTPException(500, "FATHOM_API_KEY non configurata")
+    _cleanup_jobs()
+    job_id = str(uuid.uuid4())
+    _jobs[job_id] = {"status": "pending", "created_at": time.time(), "progress": "Avvio..."}
+    _spawn(_run_sessions_analysis(job_id))
+    return JSONResponse({"job_id": job_id})
+
+
+@app.get("/api/sessions-analysis/result")
+async def sessions_analysis_saved(_: str = Depends(_check_admin)):
+    path = programmi._DATA_DIR / "sessions_analysis.json"
+    if path.exists():
+        return JSONResponse({"status": "done", "results": json.loads(path.read_text(encoding="utf-8"))})
+    return JSONResponse({"status": "not_found"})
+
+
+@app.get("/api/sessions-analysis/{job_id}")
+async def sessions_analysis_status(job_id: str, _: str = Depends(_check_admin)):
+    job = _jobs.get(job_id)
+    if not job:
+        raise HTTPException(404, "Job non trovato o scaduto")
+    return JSONResponse(job)
 
 
 # ── Programmi Operativi ───────────────────────────────────────────────────────

@@ -179,6 +179,25 @@
       </div>
     </div>
 
+    <!-- Analisi sessioni Fathom -->
+    <div class="glass rounded-2xl overflow-hidden">
+      <div class="px-5 py-4 border-b border-brand/20 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <svg class="w-4 h-4 text-brand-light" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>
+          <h2 class="text-sm font-semibold text-slate-200">Analisi sessioni Fathom</h2>
+        </div>
+        <button onclick="startSessionAnalysis()" id="analysisBtn"
+          class="btn-primary text-white px-4 py-2 rounded-xl text-xs font-semibold disabled:opacity-40">
+          🔍 Analizza tutte
+        </button>
+      </div>
+      <div class="px-5 py-4">
+        <p class="text-xs text-slate-500 mb-3">Analizza ogni sessione registrata su Fathom con Claude e genera titolo, categoria e riassunto. Il risultato viene salvato sul volume /data.</p>
+        <div id="analysisProgress" class="hidden text-xs text-brand-light py-2 font-medium"></div>
+        <div id="analysisResults" class="hidden mt-2 max-h-[600px] overflow-y-auto pr-1"></div>
+      </div>
+    </div>
+
   </main>
 
   <script>
@@ -360,6 +379,87 @@
         btn.disabled = false;
       }
     }
+    // ── Sessions Analysis ──────────────────────────────
+    const CAT_LABELS = {
+      formazione_vendita: 'Formazione Vendita', formazione_chat: 'Formazione Chat',
+      reclutamento: 'Reclutamento', revisione_call: 'Revisione Call',
+      strategia_cliente: 'Strategia Cliente', onboarding_cliente: 'Onboarding Cliente',
+      programma_operativo: 'Programma Operativo', interno_tsc: 'Interno TSC',
+      altro: 'Altro', nessuna_trascrizione: 'Senza Trascrizione', errore: 'Errori',
+    };
+    const CAT_ORDER = ['formazione_vendita','formazione_chat','reclutamento','revisione_call',
+      'strategia_cliente','onboarding_cliente','programma_operativo','interno_tsc','altro','nessuna_trascrizione','errore'];
+
+    let _analysisJobId = null, _analysisPoll = null;
+
+    async function startSessionAnalysis() {
+      const btn = document.getElementById('analysisBtn');
+      const prog = document.getElementById('analysisProgress');
+      const res  = document.getElementById('analysisResults');
+      btn.disabled = true; btn.textContent = 'Analisi in corso...';
+      prog.textContent = 'Avvio analisi...'; prog.classList.remove('hidden');
+      res.classList.add('hidden');
+      try {
+        const r = await fetch('/api/sessions-analysis', { method: 'POST' });
+        const d = await r.json();
+        if (d.error) { prog.textContent = 'Errore: ' + d.error; btn.disabled = false; btn.textContent = '🔍 Analizza tutte'; return; }
+        _analysisJobId = d.job_id;
+        _analysisPoll = setInterval(pollAnalysis, 2500);
+      } catch(e) {
+        prog.textContent = 'Errore: ' + e.message; btn.disabled = false; btn.textContent = '🔍 Analizza tutte';
+      }
+    }
+
+    async function pollAnalysis() {
+      if (!_analysisJobId) return;
+      try {
+        const r = await fetch('/api/sessions-analysis/' + _analysisJobId);
+        const d = await r.json();
+        const prog = document.getElementById('analysisProgress');
+        if (d.status === 'pending') { prog.textContent = d.progress || 'Analisi in corso...'; return; }
+        clearInterval(_analysisPoll); _analysisPoll = null;
+        const btn = document.getElementById('analysisBtn');
+        btn.disabled = false; btn.textContent = '🔍 Rianalizza tutto';
+        if (d.status === 'error') { prog.textContent = 'Errore: ' + d.error; return; }
+        prog.classList.add('hidden');
+        renderSessionResults(d.results);
+      } catch(e) { /* silent poll error */ }
+    }
+
+    function renderSessionResults(results) {
+      const el = document.getElementById('analysisResults');
+      const bycat = {};
+      results.forEach(r => { const c = r.categoria || 'altro'; (bycat[c] = bycat[c] || []).push(r); });
+      let html = `<div class="text-xs text-slate-500 mb-3">${results.length} sessioni analizzate</div>`;
+      for (const cat of CAT_ORDER) {
+        const items = bycat[cat]; if (!items) continue;
+        items.sort((a, b) => (b.data || '').localeCompare(a.data || ''));
+        html += `<div class="mb-5">
+          <div class="text-xs font-bold text-brand-light uppercase tracking-wider mb-2">${CAT_LABELS[cat] || cat} (${items.length})</div>
+          ${items.map(r => `
+            <div class="py-2.5 border-b border-slate-800/60">
+              <div class="flex items-start gap-2">
+                <span class="text-xs text-slate-600 flex-none w-20 mt-0.5">${r.data || '?'}</span>
+                <div class="flex-1 min-w-0">
+                  <div class="text-sm text-slate-200 font-medium leading-snug">${esc(r.titolo || r.fathom_title)}</div>
+                  ${r.cliente ? `<span class="text-xs text-brand-light">[${esc(r.cliente)}]</span>` : ''}
+                  ${r.riassunto ? `<div class="text-xs text-slate-500 mt-1 leading-relaxed">${esc(r.riassunto)}</div>` : ''}
+                </div>
+              </div>
+            </div>`).join('')}
+        </div>`;
+      }
+      el.innerHTML = html; el.classList.remove('hidden');
+    }
+
+    async function loadExistingAnalysis() {
+      try {
+        const r = await fetch('/api/sessions-analysis/result');
+        const d = await r.json();
+        if (d.status === 'done' && d.results?.length) renderSessionResults(d.results);
+      } catch(e) { /* no saved analysis */ }
+    }
+    loadExistingAnalysis();
   </script>
 </body>
 </html>
