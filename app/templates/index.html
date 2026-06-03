@@ -236,14 +236,7 @@
       if (el) el.remove();
     }
 
-    function addAnalysisBubble(filename, transcript, answer, sources) {
-      let sourcesHtml = '';
-      if (sources && sources.length > 0) {
-        const links = sources.map(s =>
-          `<a href="${s.url||'#'}" target="_blank" class="text-xs bg-navy-800 text-brand-light border border-brand/30 rounded-full px-3 py-1 hover:border-brand transition-all truncate max-w-xs">${esc(s.titolo)}</a>`
-        ).join('');
-        sourcesHtml = `<div class="mt-3 pt-3 border-t border-brand/10"><p class="text-xs text-slate-600 uppercase tracking-widest mb-2 font-semibold">Fonti KB</p><div class="flex flex-wrap gap-2">${links}</div></div>`;
-      }
+    function addAnalysisBubble(filename, transcript, answer) {
       const trId = 'tr_' + Date.now();
       const d = document.createElement('div');
       d.className = 'flex justify-start';
@@ -256,26 +249,17 @@
           </div>
           <div id="${trId}" class="hidden mb-3 p-3 bg-navy-950/50 rounded-lg text-xs text-slate-400 leading-relaxed max-h-40 overflow-y-auto border border-slate-700/50">${esc(transcript)}</div>
           <div class="prose-tsc leading-relaxed">${marked.parse(answer)}</div>
-          ${sourcesHtml}
         </div>`;
       chatMessages.appendChild(d);
       scrollToBottom();
     }
 
-    function addAIBubble(text, sources) {
-      let sourcesHtml = '';
-      if (sources && sources.length > 0) {
-        const links = sources.map(s =>
-          `<a href="${s.url||'#'}" target="_blank" class="text-xs bg-navy-800 text-brand-light border border-brand/30 rounded-full px-3 py-1 hover:border-brand transition-all truncate max-w-xs">${esc(s.titolo)}</a>`
-        ).join('');
-        sourcesHtml = `<div class="mt-3 pt-3 border-t border-brand/10"><p class="text-xs text-slate-600 uppercase tracking-widest mb-2 font-semibold">Fonti</p><div class="flex flex-wrap gap-2">${links}</div></div>`;
-      }
+    function addAIBubble(text) {
       const d = document.createElement('div');
       d.className = 'flex justify-start';
       d.innerHTML = `
         <div class="glass rounded-2xl rounded-tl-sm px-4 sm:px-5 py-3 sm:py-4 text-sm shadow-xl" style="max-width:92%">
           <div class="prose-tsc leading-relaxed">${marked.parse(text)}</div>
-          ${sourcesHtml}
         </div>`;
       chatMessages.appendChild(d);
       scrollToBottom();
@@ -349,7 +333,7 @@
           if (data.status === 'error') {
             addErrorBubble(data.error || 'Errore durante l\'analisi.');
           } else {
-            addAnalysisBubble(data.filename, data.transcript, data.answer, data.sources);
+            addAnalysisBubble(data.filename, data.transcript, data.answer);
             history.push({ role: 'user', content: `[Analisi call: ${data.filename}]\n\nTrascrizione:\n${data.transcript}` });
             history.push({ role: 'assistant', content: data.answer });
           }
@@ -454,7 +438,7 @@
         if (data.error) {
           addErrorBubble(data.error);
         } else {
-          addAIBubble(data.answer, data.sources);
+          addAIBubble(data.answer);
           history.push({ role: 'user', content: question });
           history.push({ role: 'assistant', content: data.answer });
         }

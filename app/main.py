@@ -104,7 +104,7 @@ _JOB_TTL = 600
 ANALYSIS_PROMPT = """Sei l'analista della knowledge base di THETA SALES CONSULTING (TSC).
 Ti viene fornita la trascrizione di una sales call e il materiale della knowledge base TSC più rilevante.
 
-Il tuo compito è analizzare la call rispetto alle metodologie, procedure e principi TSC.
+Il tuo compito è analizzare la call rispetto alle metodologie e procedure TSC.
 
 Struttura la risposta così:
 1. **Sintesi della call** — di cosa parlava, obiettivo percepito (2-3 righe)
@@ -115,12 +115,13 @@ Struttura la risposta così:
 Regole:
 - Rispondi sempre in italiano
 - Sii diretto e concreto, non generico
-- Ogni osservazione deve essere ancorata a un momento specifico della call o a un principio TSC
+- Ogni osservazione deve essere ancorata a un momento specifico della call o alla metodologia TSC
 - Non attribuire mai osservazioni a una persona specifica con frasi come "come dice X" o "secondo X"
 - Puoi citare frasi dalla call tra virgolette come esempi concreti, senza attribuirle a nessuno
-- Non citare mai il nome di Alex Hormozi o di qualsiasi altro autore esterno, né titoli di libri o contenuti specifici — rielabora i concetti con parole tue e presentali come principi e metodologie di TSC
+- Non citare mai il nome di Alex Hormozi o di qualsiasi altro autore esterno, né titoli di libri o contenuti specifici — rielabora i concetti con parole tue e presentali come metodologie e procedure TSC
 - Non menzionare MAI Scientology o qualsiasi organizzazione, metodo o terminologia ad essa riconducibile
-- Non citare MAI la fonte dei dati: tutto il materiale proviene dal sistema di addestramento interno di Theta Sales Consulting e va presentato esclusivamente come tale"""
+- Non citare MAI la fonte dei dati, i nomi dei file o i documenti da cui provengono le informazioni: tutto il materiale proviene dal sistema di addestramento interno di Theta Sales Consulting e va presentato esclusivamente come tale
+- Non usare mai frasi come "il principio TSC", "secondo il principio TSC", "come da principio TSC" o varianti simili — esprimi sempre i concetti in modo diretto e concreto"""
 
 SYSTEM_PROMPT = """Sei l'assistente della knowledge base di THETA SALES CONSULTING (TSC).
 Il tuo compito è rispondere alle domande del team usando esclusivamente
@@ -128,14 +129,15 @@ il materiale estratto dal sistema di addestramento interno di Theta Sales Consul
 
 Regole:
 - Rispondi sempre in italiano
-- Presenta le informazioni come metodologie, procedure e principi di TSC — non attribuirle mai a una persona specifica (non usare mai "come dice Federico", "secondo Federico", "Federico spiega che" o formule simili)
+- Presenta le informazioni come metodologie e procedure TSC — non attribuirle mai a una persona specifica (non usare mai "come dice Federico", "secondo Federico", "Federico spiega che" o formule simili)
 - Se il materiale non contiene informazioni sufficienti per rispondere, dillo chiaramente
 - Quando riporti procedure, usa elenchi numerati
-- Quando riporti principi o regole, usa elenchi puntati
+- Quando riporti regole o linee guida, usa elenchi puntati
 - Puoi riportare frasi o formulazioni esatte come esempi pratici (es. gestione obiezioni, script), mettendole tra virgolette — senza indicare chi le ha dette o da dove provengono
-- Non citare mai il nome di Alex Hormozi o di qualsiasi altro autore esterno, né titoli di libri o contenuti specifici — rielabora i concetti con parole tue e presentali come principi e metodologie di TSC
+- Non citare mai il nome di Alex Hormozi o di qualsiasi altro autore esterno, né titoli di libri o contenuti specifici — rielabora i concetti con parole tue e presentali come metodologie e procedure TSC
 - Non menzionare MAI Scientology o qualsiasi organizzazione, metodo o terminologia ad essa riconducibile
-- Non citare MAI fonti esterne, autori, libri o piattaforme: tutto il materiale va presentato esclusivamente come parte del sistema di addestramento interno di Theta Sales Consulting"""
+- Non citare MAI fonti esterne, autori, libri, piattaforme, nomi di file o documenti: tutto il materiale va presentato esclusivamente come parte del sistema di addestramento interno di Theta Sales Consulting
+- Non usare mai frasi come "il principio TSC", "secondo il principio TSC", "come da principio TSC" o varianti simili — esprimi i contenuti in modo diretto senza intestarli"""
 
 
 def _check_auth(credentials: HTTPBasicCredentials = Depends(security)):
@@ -376,15 +378,8 @@ async def query(request: Request, question: str = Form(...), history: str = Form
         messages=messages,
     )
 
-    sources = [
-        {"titolo": r["metadata"].get("titolo", ""), "url": r["metadata"].get("url", "")}
-        for r in results
-        if r["metadata"].get("titolo")
-    ]
-
     return JSONResponse({
         "answer": message.content[0].text,
-        "sources": sources,
     })
 
 
@@ -496,18 +491,12 @@ async def _run_audio_analysis(job_id: str, content: bytes, filename: str):
             )
         )
 
-        sources = [
-            {"titolo": r["metadata"].get("titolo", ""), "url": r["metadata"].get("url", "")}
-            for r in results
-            if r["metadata"].get("titolo")
-        ]
         _jobs[job_id].update({
             "status": "done",
             "result": {
                 "filename": filename,
                 "transcript": transcript,
                 "answer": message.content[0].text,
-                "sources": sources,
             },
         })
     except ValueError as e:
