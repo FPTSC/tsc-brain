@@ -101,6 +101,39 @@ _bg_tasks: set = set()
 _jobs: dict = {}
 _JOB_TTL = 600
 
+# ── Hatting docs da sincronizzare ───────────────────────────
+_HATTING_BASE = "https://tsc-platform.vercel.app/"
+_HATTING_DOCS = [
+    ("assets/docs/scaling/stage01-monetizza.html",                    "Stage 1: Monetizza",                    "scaling"),
+    ("assets/docs/scaling/stage02-pubblicizza.html",                  "Stage 2: Pubblicizza",                  "scaling"),
+    ("assets/docs/scaling/stage03-stabilizza.html",                   "Stage 3: Stabilizza",                   "scaling"),
+    ("assets/docs/scaling/stage04-prioritizza.html",                  "Stage 4: Prioritizza",                  "scaling"),
+    ("assets/docs/scaling/stage05-productizza.html",                  "Stage 5: Productizza",                  "scaling"),
+    ("assets/docs/scaling/stage06-ottimizza.html",                    "Stage 6: Ottimizza",                    "scaling"),
+    ("assets/docs/scaling/stage07-categorizza.html",                  "Stage 7: Categorizza",                  "scaling"),
+    ("assets/docs/scaling/stage08-specializza.html",                  "Stage 8: Specializza",                  "scaling"),
+    ("assets/docs/scaling/stage09-capitalizza.html",                  "Stage 9: Capitalizza",                  "scaling"),
+    ("assets/docs/consulente-vendita/struttura-call.html",            "Struttura della Call",                  "vendita"),
+    ("assets/docs/struttura-call-vendita.html",                       "Scheda Rapida — 5 Fasi",                "vendita"),
+    ("assets/docs/consulente-vendita/negoziazione.html",              "Negoziazione",                          "vendita"),
+    ("assets/docs/consulente-vendita/obiezioni.html",                 "Anticipazione e Gestione Obiezioni",    "vendita"),
+    ("assets/docs/bibbia-obiezioni.html",                             "Bibbia delle Obiezioni",                "vendita"),
+    ("assets/docs/consulente-vendita/obiezioni-reframing.html",       "Obiezioni e Reframing",                 "vendita"),
+    ("assets/docs/consulente-vendita/script-personalizzato.html",     "Script Personalizzato",                 "vendita"),
+    ("assets/docs/consulente-vendita/roleplay.html",                  "Struttura del Roleplay",                "vendita"),
+    ("assets/docs/consulente-vendita/roleplay-call.html",             "Roleplay e Gestione Call",              "vendita"),
+    ("assets/docs/consulente-vendita/ascolto-chiamate.html",          "Analisi Call — Processo Operativo",     "vendita"),
+    ("assets/docs/consulente-vendita/formazione-rinnovi.html",        "Rinnovi (Bozza)",                       "vendita"),
+    ("assets/docs/consulente-vendita/rinnovi-completo.html",          "Rinnovi: Framework Completo",           "vendita"),
+    ("assets/docs/consulente-vendita/produttivita-team.html",         "Produttività del Team",                 "vendita"),
+    ("assets/docs/consulente-vendita/chat-sensibilizzazione.html",    "Chat e Sensibilizzazione",              "vendita"),
+    ("assets/docs/consulente-vendita/selezione-completa.html",        "Selezione e Colloquio Completo",        "vendita"),
+    ("assets/docs/consulente-marketing/format-angoli-contenuti.html", "Format Veloci e Angoli Comunicativi",  "marketing"),
+    ("assets/docs/consulente-marketing/revisione-profili-contenuti.html", "Revisione Profilo e Contenuti",    "marketing"),
+    ("assets/docs/consulente-marketing/stories-autorevole.html",      "Stories per Autorevolezza",             "marketing"),
+    ("assets/docs/consulente-marketing/ads-dirette-competitor.html",  "Ads Dirette e Analisi Competitor",      "marketing"),
+]
+
 ANALYSIS_PROMPT = """Sei l'analista della knowledge base di THETA SALES CONSULTING (TSC).
 Ti viene fornita la trascrizione di una sales call e il materiale della knowledge base TSC più rilevante.
 
@@ -533,6 +566,67 @@ async def analyze_status(job_id: str, _=Depends(_check_auth)):
     return JSONResponse({"status": "done", **result})
 
 
+@app.post("/api/sync-hatting")
+async def sync_hatting(request: Request, _=Depends(_check_admin)):
+    job_id = str(uuid.uuid4())
+    _jobs[job_id] = {"status": "pending", "progress": "Avvio sync...", "done": 0, "total": len(_HATTING_DOCS), "errors": []}
+    _spawn(_run_hatting_sync(job_id))
+    return JSONResponse({"job_id": job_id})
+
+
+@app.get("/api/sync-hatting/{job_id}")
+async def sync_hatting_status(job_id: str, request: Request, _=Depends(_check_admin)):
+    job = _jobs.get(job_id)
+    if not job:
+        return JSONResponse({"status": "not_found"}, status_code=404)
+    return JSONResponse(job)
+
+
+async def _run_hatting_sync(job_id: str):
+    import io
+    try:
+        from bs4 import BeautifulSoup
+    except ImportError:
+        _jobs[job_id] = {"status": "error", "error": "beautifulsoup4 non installato sul server."}
+        return
+
+    from src.vectorstore.client import index_page
+    import requests as _req
+
+    job = _jobs[job_id]
+    total = len(_HATTING_DOCS)
+    errors = []
+
+    for i, (path, title, category) in enumerate(_HATTING_DOCS):
+        job["progress"] = f"[{i+1}/{total}] {title}..."
+        url = _HATTING_BASE + path
+        try:
+            resp = await asyncio.to_thread(_req.get, url, timeout=15)
+            resp.raise_for_status()
+            soup = BeautifulSoup(resp.content, "html.parser")
+            for tag in soup(["script", "style", "nav", "header", "footer"]):
+                tag.decompose()
+            text = soup.get_text(separator="\n", strip=True)
+            text = "\n".join(line for line in text.splitlines() if line.strip())
+            if len(text) < 50:
+                errors.append(f"{title}: contenuto troppo breve")
+                continue
+            page_id = "hatting_" + path.replace("/", "_").replace(".", "_")
+            await asyncio.to_thread(
+                index_page,
+                page_id,
+                text,
+                {"titolo": title, "categoria": category, "source": "hatting", "url": url},
+            )
+            job["done"] = i + 1
+        except Exception as e:
+            errors.append(f"{title}: {e}")
+
+    job["status"] = "done"
+    job["errors"] = errors
+    job["progress"] = f"Completato: {job['done']}/{total} documenti indicizzati."
+
+
 @app.post("/api/ingest-text")
 async def ingest_text(
     request: Request,
@@ -542,16 +636,37 @@ async def ingest_text(
     _=Depends(_check_admin),
 ):
     content = await file.read()
-    try:
-        text = content.decode("utf-8")
-    except UnicodeDecodeError:
+    fname = file.filename or ""
+
+    if fname.lower().endswith(".pdf"):
         try:
-            text = content.decode("latin-1")
-        except Exception:
-            return JSONResponse(
-                {"error": "Impossibile leggere il file. Usa un file .txt in UTF-8."},
-                status_code=400,
-            )
+            import io, pdfplumber
+            with pdfplumber.open(io.BytesIO(content)) as pdf:
+                text = "\n".join(p.extract_text() or "" for p in pdf.pages)
+        except ImportError:
+            return JSONResponse({"error": "pdfplumber non installato sul server."}, status_code=500)
+        except Exception as e:
+            return JSONResponse({"error": f"Impossibile leggere il PDF: {e}"}, status_code=400)
+    elif fname.lower().endswith(".html") or fname.lower().endswith(".htm"):
+        try:
+            from bs4 import BeautifulSoup
+            soup = BeautifulSoup(content, "html.parser")
+            for tag in soup(["script", "style", "nav", "header", "footer"]):
+                tag.decompose()
+            text = soup.get_text(separator="\n", strip=True)
+        except ImportError:
+            text = content.decode("utf-8", errors="replace")
+    else:
+        try:
+            text = content.decode("utf-8")
+        except UnicodeDecodeError:
+            try:
+                text = content.decode("latin-1")
+            except Exception:
+                return JSONResponse(
+                    {"error": "Impossibile leggere il file. Usa un file .txt in UTF-8."},
+                    status_code=400,
+                )
 
     if not text.strip():
         return JSONResponse({"error": "Il file è vuoto."}, status_code=400)
