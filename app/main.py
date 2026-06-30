@@ -966,7 +966,7 @@ def _check_we_key(request: Request):
         raise HTTPException(status_code=401, detail="WE API key non valida")
 
 
-async def _run_we_sync(job_id: str, since_date: str | None):
+async def _run_we_sync(job_id: str, since_date: str | None, limit: int | None = None):
     from app.wonder_empire import (
         fetch_recordings, fetch_transcript, classify_call,
         analyze_call, get_existing_ids, save_to_supabase,
@@ -984,6 +984,11 @@ async def _run_we_sync(job_id: str, since_date: str | None):
         recordings = await asyncio.to_thread(fetch_recordings, WE_FATHOM_API_KEY, since_date)
         total = len(recordings)
         _jobs[job_id]["total"] = total
+
+        if limit:
+            recordings = recordings[:limit]
+            total = len(recordings)
+            _jobs[job_id]["total"] = total
 
         existing_ids = await asyncio.to_thread(get_existing_ids, WE_SUPABASE_URL, WE_SUPABASE_KEY)
 
@@ -1080,9 +1085,10 @@ async def we_sync(request: Request, _=Depends(_check_we_key)):
         pass
 
     since = body.get("since")
+    limit = body.get("limit")
     job_id = str(uuid.uuid4())
     _jobs[job_id] = {"status": "pending", "created_at": time.time(), "progress": "Avvio...", "total": 0}
-    _spawn(_run_we_sync(job_id, since))
+    _spawn(_run_we_sync(job_id, since, limit))
     return JSONResponse({"job_id": job_id})
 
 
