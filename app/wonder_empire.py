@@ -270,6 +270,14 @@ def classify_call(
 
 # ── AI analysis ──────────────────────────────────────────────────────────────
 
+_MAX_TRANSCRIPT = 40_000  # ~10K tokens, safe for all call types
+
+
+def _clean_transcript(text: str) -> str:
+    """Remove null bytes and other chars that cause Anthropic 400 errors."""
+    return text.replace("\x00", "").strip()[:_MAX_TRANSCRIPT]
+
+
 def analyze_call(
     call_type: str,
     transcript: str,
@@ -281,12 +289,14 @@ def analyze_call(
     For vendita/rinnovo: fetches relevant KB context first.
     For onboarding/check: uses fixed prompts.
     """
+    safe_transcript = _clean_transcript(transcript)
+
     if call_type == "onboarding":
-        prompt = _ONBOARDING_PROMPT.format(transcript=transcript)
+        prompt = _ONBOARDING_PROMPT.format(transcript=safe_transcript)
         system = "Sei il coach operativo di Wonder Empire. Parla diretto, usa l'imperativo."
 
     elif call_type == "check":
-        prompt = _CHECK_PROMPT.format(transcript=transcript)
+        prompt = _CHECK_PROMPT.format(transcript=safe_transcript)
         system = "Sei il coach operativo di Wonder Empire. Parla diretto, usa l'imperativo."
 
     elif call_type in ("vendita", "rinnovo"):
@@ -299,11 +309,11 @@ def analyze_call(
         ) if results else "Nessun materiale trovato nella knowledge base."
 
         template = _RINNOVO_PROMPT if call_type == "rinnovo" else _VENDITA_PROMPT
-        prompt = template.format(context=context, transcript=transcript)
+        prompt = template.format(context=context, transcript=safe_transcript)
         system = "Sei il coach operativo di Wonder Empire. Parla diretto, usa l'imperativo. Non citare fonti o autori esterni."
 
     else:
-        prompt = _CHECK_PROMPT.format(transcript=transcript)
+        prompt = _CHECK_PROMPT.format(transcript=safe_transcript)
         system = "Sei il coach operativo di Wonder Empire. Parla diretto, usa l'imperativo."
 
     resp = claude_client.messages.create(
