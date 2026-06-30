@@ -1005,7 +1005,7 @@ async def _run_we_sync(job_id: str, since_date: str | None):
                     fetch_transcript, WE_FATHOM_API_KEY, rec_id
                 )
                 if not transcript.strip():
-                    errors.append({"id": rec_id, "title": title, "error": "Trascrizione non disponibile"})
+                    skipped += 1
                     continue
 
                 meta = await asyncio.to_thread(
