@@ -239,7 +239,7 @@ def classify_call(
     prompt = _CLASSIFY_PROMPT.format(
         title=title,
         participants=", ".join(speakers) if speakers else "non rilevati",
-        transcript=transcript[:3000],
+        transcript=transcript.replace("\x00", "").strip()[:3000],
     )
     resp = claude_client.messages.create(
         model="claude-haiku-4-5-20251001",

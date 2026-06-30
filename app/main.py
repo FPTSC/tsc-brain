@@ -1045,6 +1045,7 @@ async def _run_we_sync(job_id: str, since_date: str | None, limit: int | None = 
                     errors.append({"id": rec_id, "title": title, "error": save_err})
 
             except Exception as e:
+                print(f"[we-sync] exception on {rec_id} ({title!r}): {type(e).__name__}: {e}", flush=True)
                 errors.append({"id": rec_id, "title": title, "error": str(e)})
 
             await asyncio.sleep(0.3)
