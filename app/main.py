@@ -1061,6 +1061,16 @@ async def _run_we_sync(job_id: str, since_date: str | None, limit: int | None = 
         _jobs[job_id].update({"status": "error", "error": str(e)})
 
 
+@app.get("/api/we/recordings-sample")
+async def we_recordings_sample(request: Request, _=Depends(_check_we_key)):
+    """Returns raw fields of the first 3 WE recordings from Fathom, for debugging coach detection."""
+    from app.wonder_empire import fetch_recordings
+    if not WE_FATHOM_API_KEY:
+        return JSONResponse({"error": "WE_FATHOM_API_KEY non configurata"})
+    recs = await asyncio.to_thread(fetch_recordings, WE_FATHOM_API_KEY, None)
+    return JSONResponse(recs[:3])
+
+
 @app.get("/api/we/test")
 async def we_test(request: Request, _=Depends(_check_we_key)):
     """Diagnostic: tests Supabase connectivity and write permission."""
