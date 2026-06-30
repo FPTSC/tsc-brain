@@ -366,4 +366,4 @@ def save_to_supabase(
         json=payload,
         timeout=15,
     )
-    return r.status_code in (200, 201)
+    return r.status_code < 300
