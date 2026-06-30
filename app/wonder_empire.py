@@ -10,7 +10,7 @@ import requests
 
 FATHOM_BASE = "https://api.fathom.ai/external/v1"
 
-WE_COACH_NAMES = {"Claudia", "Irene", "Josy", "Jess", "Giulia", "Wonderlou", "Federica", "Lou"}
+WE_COACH_NAMES = {"Claudia", "Irene", "Josy", "Jess", "Giulia", "Wonderlou", "Federica", "Lou", "Lucia"}
 WE_COACH_USERNAME = {
     "Claudia": "claudia",
     "Irene": "irene",
@@ -19,8 +19,29 @@ WE_COACH_USERNAME = {
     "Giulia": "giulia",
     "Wonderlou": "wonderlou",
     "Lou": "wonderlou",
+    "Lucia": "wonderlou",
     "Federica": "federica",
 }
+
+# Map first name (lowercase) from Fathom recorded_by.name → coach username
+# More reliable than speaker detection from transcript
+_RECORDED_BY_MAP = {
+    "lucia": "wonderlou",
+    "federica": "federica",
+    "irene": "irene",
+    "claudia": "claudia",
+    "josy": "josy",
+    "jess": "jess",
+    "giulia": "giulia",
+}
+
+
+def detect_coach_from_recorder(recorded_by_name: str) -> str | None:
+    """Primary coach detection: use Fathom's recorded_by.name (first name match)."""
+    if not recorded_by_name:
+        return None
+    first = recorded_by_name.strip().split()[0].lower()
+    return _RECORDED_BY_MAP.get(first)
 CALL_TYPES = ("onboarding", "vendita", "rinnovo", "check")
 
 # ── Prompts ──────────────────────────────────────────────────────────────────

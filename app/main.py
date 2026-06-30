@@ -1016,6 +1016,12 @@ async def _run_we_sync(job_id: str, since_date: str | None, limit: int | None = 
                 meta = await asyncio.to_thread(
                     classify_call, title, speakers, transcript, _claude
                 )
+                # Override coach with recorded_by (most reliable source)
+                from app.wonder_empire import detect_coach_from_recorder
+                recorder_name = rec.get("recorded_by", {}).get("name", "")
+                coach_override = detect_coach_from_recorder(recorder_name)
+                if coach_override:
+                    meta["coach"] = coach_override
                 analysis_text = await asyncio.to_thread(
                     analyze_call, meta["call_type"], transcript, search, _claude
                 )
