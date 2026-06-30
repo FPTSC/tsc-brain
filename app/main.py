@@ -20,7 +20,8 @@ import bcrypt
 import anthropic
 from groq import Groq
 
-from config.settings import ANTHROPIC_API_KEY, CLAUDE_MODEL, GROQ_API_KEY, FATHOM_API_KEY
+from config.settings import ANTHROPIC_API_KEY, CLAUDE_MODEL, GROQ_API_KEY, FATHOM_API_KEY, \
+    WE_FATHOM_API_KEY, WE_API_KEY, WE_SUPABASE_URL, WE_SUPABASE_KEY
 from src.vectorstore.client import search, count
 from src.processor.extractor import extract_call_data, extract_from_coaching
 from src.notion.client import save_call
@@ -955,3 +956,128 @@ async def get_po_pdf(filename: str):
         raise HTTPException(404, "File non trovato")
     return FileResponse(str(path), media_type="application/pdf",
                         headers={"Content-Disposition": f'inline; filename="{filename}"'})
+
+
+# ── Wonder Empire — Call Analysis ─────────────────────────────────────────────
+
+def _check_we_key(request: Request):
+    key = request.headers.get("X-API-Key", "")
+    if not WE_API_KEY or key != WE_API_KEY:
+        raise HTTPException(status_code=401, detail="WE API key non valida")
+
+
+async def _run_we_sync(job_id: str, since_date: str | None):
+    from app.wonder_empire import (
+        fetch_recordings, fetch_transcript, classify_call,
+        analyze_call, get_existing_ids, save_to_supabase,
+    )
+
+    if not WE_FATHOM_API_KEY:
+        _jobs[job_id].update({"status": "error", "error": "WE_FATHOM_API_KEY non configurata"})
+        return
+    if not WE_SUPABASE_URL or not WE_SUPABASE_KEY:
+        _jobs[job_id].update({"status": "error", "error": "Credenziali Supabase WE non configurate"})
+        return
+
+    try:
+        _jobs[job_id]["progress"] = "Recupero lista call da Fathom..."
+        recordings = await asyncio.to_thread(fetch_recordings, WE_FATHOM_API_KEY, since_date)
+        total = len(recordings)
+        _jobs[job_id]["total"] = total
+
+        existing_ids = await asyncio.to_thread(get_existing_ids, WE_SUPABASE_URL, WE_SUPABASE_KEY)
+
+        processed, skipped, errors = [], 0, []
+
+        for i, rec in enumerate(recordings):
+            rec_id = str(rec["recording_id"])
+            title  = rec.get("title") or f"Call {rec_id}"
+            date   = (rec.get("started_at") or "")[:10]
+
+            _jobs[job_id]["progress"] = f"[{i+1}/{total}] {title[:55]}"
+
+            if rec_id in existing_ids:
+                skipped += 1
+                continue
+
+            try:
+                transcript, speakers = await asyncio.to_thread(
+                    fetch_transcript, WE_FATHOM_API_KEY, rec_id
+                )
+                if not transcript.strip():
+                    errors.append({"id": rec_id, "title": title, "error": "Trascrizione non disponibile"})
+                    continue
+
+                meta = await asyncio.to_thread(
+                    classify_call, title, speakers, transcript, _claude
+                )
+                analysis_text = await asyncio.to_thread(
+                    analyze_call, meta["call_type"], transcript, search, _claude
+                )
+
+                saved = await asyncio.to_thread(
+                    save_to_supabase,
+                    WE_SUPABASE_URL, WE_SUPABASE_KEY,
+                    rec_id, date,
+                    meta.get("coach"),
+                    meta.get("client_name"),
+                    meta["call_type"],
+                    analysis_text,
+                    transcript,
+                )
+
+                if saved:
+                    processed.append({
+                        "id": rec_id, "date": date, "title": title,
+                        "call_type": meta["call_type"],
+                        "coach": meta.get("coach"),
+                        "client_name": meta.get("client_name"),
+                        "confidence": meta.get("confidence"),
+                    })
+                else:
+                    errors.append({"id": rec_id, "title": title, "error": "Errore salvataggio Supabase"})
+
+            except Exception as e:
+                errors.append({"id": rec_id, "title": title, "error": str(e)})
+
+            await asyncio.sleep(0.3)
+
+        _jobs[job_id].update({
+            "status": "done",
+            "processed": processed,
+            "skipped": skipped,
+            "errors": errors,
+        })
+
+    except Exception as e:
+        _jobs[job_id].update({"status": "error", "error": str(e)})
+
+
+@app.post("/api/we/sync")
+async def we_sync(request: Request, _=Depends(_check_we_key)):
+    """
+    Start async sync of WE Fathom calls.
+    Optional body: {"since": "YYYY-MM-DD"} to limit sync window.
+    Returns {job_id}.
+    """
+    _cleanup_jobs()
+    body = {}
+    try:
+        body = await request.json()
+    except Exception:
+        pass
+
+    since = body.get("since")
+    job_id = str(uuid.uuid4())
+    _jobs[job_id] = {"status": "pending", "created_at": time.time(), "progress": "Avvio...", "total": 0}
+    _spawn(_run_we_sync(job_id, since))
+    return JSONResponse({"job_id": job_id})
+
+
+@app.get("/api/we/sync/{job_id}")
+async def we_sync_status(job_id: str, _=Depends(_check_we_key)):
+    """Poll sync job status."""
+    job = _jobs.get(job_id)
+    if not job:
+        raise HTTPException(404, "Job non trovato o scaduto")
+    return JSONResponse(job)

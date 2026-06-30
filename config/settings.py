@@ -18,3 +18,9 @@ NOTION_DATABASE_ID = os.environ.get("NOTION_DATABASE_ID", "")
 
 APP_USER = os.environ.get("APP_USER", "tsc")
 APP_PASSWORD = os.environ.get("APP_PASSWORD", "tsc2024")
+
+# Wonder Empire
+WE_FATHOM_API_KEY  = os.environ.get("WE_FATHOM_API_KEY", "")
+WE_API_KEY         = os.environ.get("WE_API_KEY", "")
+WE_SUPABASE_URL    = os.environ.get("WE_SUPABASE_URL", "")
+WE_SUPABASE_KEY    = os.environ.get("WE_SUPABASE_SERVICE_KEY", "")
