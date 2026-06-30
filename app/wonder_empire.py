@@ -349,11 +349,11 @@ def save_to_supabase(
     call_type: str,
     analysis: str,
     raw_transcript: str,
-) -> bool:
-    """Insert one call analysis. Returns True on success."""
+) -> tuple[bool, str]:
+    """Insert one call analysis. Returns (success, error_message)."""
     payload = {
         "fathom_call_id": fathom_call_id,
-        "date": date,
+        "date": date or "1970-01-01",
         "coach_username": coach_username or "unknown",
         "client_name": client_name or "Sconosciuta",
         "call_type": call_type,
@@ -366,4 +366,37 @@ def save_to_supabase(
         json=payload,
         timeout=15,
     )
-    return r.status_code < 300
+    if r.status_code < 300:
+        return True, ""
+    return False, f"HTTP {r.status_code}: {r.text[:300]}"
+
+
+def test_supabase(supabase_url: str, service_key: str) -> dict:
+    """Quick connectivity + write test. Returns diagnostic info."""
+    # 1. Read test
+    r_read = requests.get(
+        f"{supabase_url}/rest/v1/call_analyses",
+        headers={**_sb_headers(service_key), "Prefer": ""},
+        params={"select": "id", "limit": "1"},
+        timeout=10,
+    )
+    # 2. Write test (will fail on unique constraint but tells us if auth works)
+    r_write = requests.post(
+        f"{supabase_url}/rest/v1/call_analyses",
+        headers=_sb_headers(service_key),
+        json={
+            "fathom_call_id": "__test__",
+            "date": "2000-01-01",
+            "coach_username": "test",
+            "client_name": "test",
+            "call_type": "check",
+            "analysis": {"text": "test"},
+        },
+        timeout=10,
+    )
+    return {
+        "read_status": r_read.status_code,
+        "read_body": r_read.text[:200],
+        "write_status": r_write.status_code,
+        "write_body": r_write.text[:300],
+    }

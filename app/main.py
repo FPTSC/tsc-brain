@@ -1026,6 +1026,7 @@ async def _run_we_sync(job_id: str, since_date: str | None):
                     transcript,
                 )
 
+                saved, save_err = saved
                 if saved:
                     processed.append({
                         "id": rec_id, "date": date, "title": title,
@@ -1035,7 +1036,8 @@ async def _run_we_sync(job_id: str, since_date: str | None):
                         "confidence": meta.get("confidence"),
                     })
                 else:
-                    errors.append({"id": rec_id, "title": title, "error": "Errore salvataggio Supabase"})
+                    print(f"[we-sync] save failed for {rec_id}: {save_err}", flush=True)
+                    errors.append({"id": rec_id, "title": title, "error": save_err})
 
             except Exception as e:
                 errors.append({"id": rec_id, "title": title, "error": str(e)})
@@ -1051,6 +1053,16 @@ async def _run_we_sync(job_id: str, since_date: str | None):
 
     except Exception as e:
         _jobs[job_id].update({"status": "error", "error": str(e)})
+
+
+@app.get("/api/we/test")
+async def we_test(request: Request, _=Depends(_check_we_key)):
+    """Diagnostic: tests Supabase connectivity and write permission."""
+    from app.wonder_empire import test_supabase
+    if not WE_SUPABASE_URL or not WE_SUPABASE_KEY:
+        return JSONResponse({"error": "Credenziali Supabase non configurate"})
+    result = await asyncio.to_thread(test_supabase, WE_SUPABASE_URL, WE_SUPABASE_KEY)
+    return JSONResponse(result)
 
 
 @app.post("/api/we/sync")
