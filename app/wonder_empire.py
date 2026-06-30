@@ -10,7 +10,7 @@ import requests
 
 FATHOM_BASE = "https://api.fathom.ai/external/v1"
 
-WE_COACH_NAMES = {"Claudia", "Irene", "Josy", "Jess", "Giulia", "Wonderlou", "Federica", "Lou", "Lucia"}
+WE_COACH_NAMES = {"Claudia", "Irene", "Josy", "Jess", "Giulia", "Wonderlou", "Federica", "Lou", "Lucrezia", "Lucia"}
 WE_COACH_USERNAME = {
     "Claudia": "claudia",
     "Irene": "irene",
@@ -19,14 +19,15 @@ WE_COACH_USERNAME = {
     "Giulia": "giulia",
     "Wonderlou": "wonderlou",
     "Lou": "wonderlou",
-    "Lucia": "wonderlou",
+    "Lucrezia": "wonderlou",
+    "Lucia": "lucia",
     "Federica": "federica",
 }
 
 # Map first name (lowercase) from Fathom recorded_by.name → coach username
-# More reliable than speaker detection from transcript
 _RECORDED_BY_MAP = {
-    "lucia": "wonderlou",
+    "lucrezia": "wonderlou",
+    "lucia": "lucia",
     "federica": "federica",
     "irene": "irene",
     "claudia": "claudia",
