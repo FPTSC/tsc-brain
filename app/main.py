@@ -552,9 +552,22 @@ def _cleanup_jobs():
         _jobs.pop(jid, None)
 
 
-async def _run_audio_analysis(job_id: str, content: bytes, filename: str):
+async def _run_audio_analysis(job_id: str, content: bytes, filename: str, mode: str = "entrambe"):
     try:
         transcript = await _transcribe(content, filename)
+
+        if mode == "trascrizione":
+            _jobs[job_id].update({
+                "status": "done",
+                "result": {
+                    "filename": filename,
+                    "transcript": transcript,
+                    "answer": None,
+                    "mode": mode,
+                },
+            })
+            return
+
         results = await asyncio.to_thread(lambda: search(transcript[:1000], n_results=6))
         context = "\n\n---\n\n".join(
             f"[{r['metadata'].get('titolo', 'Senza titolo')}]\n{r['text']}"
@@ -579,6 +592,7 @@ async def _run_audio_analysis(job_id: str, content: bytes, filename: str):
                 "filename": filename,
                 "transcript": transcript,
                 "answer": message.content[0].text,
+                "mode": mode,
             },
         })
     except ValueError as e:
@@ -588,15 +602,22 @@ async def _run_audio_analysis(job_id: str, content: bytes, filename: str):
 
 
 @app.post("/api/analyze-audio")
-async def analyze_audio(request: Request, file: UploadFile = File(...), _=Depends(_check_auth)):
+async def analyze_audio(
+    request: Request,
+    file: UploadFile = File(...),
+    mode: str = Form("entrambe"),
+    _=Depends(_check_auth),
+):
     if not _groq:
         return JSONResponse({"error": "GROQ_API_KEY non configurata."}, status_code=500)
+    if mode not in ("trascrizione", "analisi", "entrambe"):
+        mode = "entrambe"
     _cleanup_jobs()
     content = await file.read()
     filename = file.filename
     job_id = str(uuid.uuid4())
     _jobs[job_id] = {"status": "pending", "created_at": time.time()}
-    _spawn(_run_audio_analysis(job_id, content, filename))
+    _spawn(_run_audio_analysis(job_id, content, filename, mode))
     return JSONResponse({"job_id": job_id})
 
 

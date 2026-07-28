@@ -7,6 +7,36 @@
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <!-- Audio mode modal -->
+  <div id="audioModeModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4" style="background:rgba(5,10,21,0.85);backdrop-filter:blur(6px);">
+    <div class="glass rounded-2xl w-full max-w-sm shadow-2xl flex flex-col">
+      <div class="flex items-center justify-between px-5 py-4 border-b border-brand/20">
+        <div class="flex items-center gap-2">
+          <svg class="w-4 h-4 text-brand-light" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4M12 3a4 4 0 014 4v4a4 4 0 01-8 0V7a4 4 0 014-4z"/></svg>
+          <span class="text-sm font-semibold text-slate-200" id="audioModeFilename">File audio</span>
+        </div>
+        <button onclick="cancelAudioMode()" class="text-slate-500 hover:text-slate-300 transition-colors">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="px-5 py-4 space-y-2.5">
+        <p class="text-xs text-slate-400 mb-1">Cosa vuoi ottenere da questo audio?</p>
+        <button onclick="confirmAudioMode('trascrizione')" class="w-full text-left border border-slate-700 hover:border-brand rounded-xl px-4 py-3 transition-all">
+          <div class="text-sm font-semibold text-slate-200">Solo trascrizione</div>
+          <div class="text-xs text-slate-500 mt-0.5">Solo il testo della call, senza analisi AI</div>
+        </button>
+        <button onclick="confirmAudioMode('analisi')" class="w-full text-left border border-slate-700 hover:border-brand rounded-xl px-4 py-3 transition-all">
+          <div class="text-sm font-semibold text-slate-200">Solo analisi</div>
+          <div class="text-xs text-slate-500 mt-0.5">Solo il coaching AI, senza mostrare il testo</div>
+        </button>
+        <button onclick="confirmAudioMode('entrambe')" class="w-full text-left border border-slate-700 hover:border-brand rounded-xl px-4 py-3 transition-all">
+          <div class="text-sm font-semibold text-slate-200">Entrambe</div>
+          <div class="text-xs text-slate-500 mt-0.5">Analisi AI più trascrizione consultabile</div>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Coaching modal -->
   <div id="coachingModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4" style="background:rgba(5,10,21,0.85);backdrop-filter:blur(6px);">
     <div class="glass rounded-2xl w-full max-w-lg shadow-2xl flex flex-col" style="max-height:90vh;">
@@ -236,8 +266,21 @@
       if (el) el.remove();
     }
 
-    function addAnalysisBubble(filename, transcript, answer) {
+    function addAnalysisBubble(filename, transcript, answer, mode) {
+      mode = mode || 'entrambe';
       const trId = 'tr_' + Date.now();
+      const showToggle = mode === 'entrambe';
+      const showTranscriptOnly = mode === 'trascrizione';
+
+      let bodyHtml;
+      if (showTranscriptOnly) {
+        bodyHtml = `<div class="text-xs text-slate-300 leading-relaxed whitespace-pre-wrap">${esc(transcript)}</div>`;
+      } else {
+        bodyHtml = `
+          ${showToggle ? `<div id="${trId}" class="hidden mb-3 p-3 bg-navy-950/50 rounded-lg text-xs text-slate-400 leading-relaxed max-h-40 overflow-y-auto border border-slate-700/50">${esc(transcript)}</div>` : ''}
+          <div class="prose-tsc leading-relaxed">${marked.parse(answer)}</div>`;
+      }
+
       const d = document.createElement('div');
       d.className = 'flex justify-start';
       d.innerHTML = `
@@ -245,10 +288,9 @@
           <div class="flex items-center gap-2 mb-3 pb-3 border-b border-brand/10">
             <svg class="w-4 h-4 text-brand-light flex-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4M12 3a4 4 0 014 4v4a4 4 0 01-8 0V7a4 4 0 014-4z"/></svg>
             <span class="text-xs text-brand-light font-semibold truncate">${esc(filename)}</span>
-            <button onclick="document.getElementById('${trId}').classList.toggle('hidden')" class="ml-auto text-xs text-slate-500 hover:text-slate-300 border border-slate-700 rounded px-2 py-0.5 flex-none whitespace-nowrap">Trascrizione</button>
+            ${showToggle ? `<button onclick="document.getElementById('${trId}').classList.toggle('hidden')" class="ml-auto text-xs text-slate-500 hover:text-slate-300 border border-slate-700 rounded px-2 py-0.5 flex-none whitespace-nowrap">Trascrizione</button>` : ''}
           </div>
-          <div id="${trId}" class="hidden mb-3 p-3 bg-navy-950/50 rounded-lg text-xs text-slate-400 leading-relaxed max-h-40 overflow-y-auto border border-slate-700/50">${esc(transcript)}</div>
-          <div class="prose-tsc leading-relaxed">${marked.parse(answer)}</div>
+          ${bodyHtml}
         </div>`;
       chatMessages.appendChild(d);
       scrollToBottom();
@@ -280,10 +322,27 @@
       emptyState.style.display = '';
     }
 
-    audioInput.addEventListener('change', async () => {
+    let pendingAudioFile = null;
+
+    audioInput.addEventListener('change', () => {
       const file = audioInput.files[0];
       if (!file) return;
       audioInput.value = '';
+      pendingAudioFile = file;
+      document.getElementById('audioModeFilename').textContent = file.name;
+      document.getElementById('audioModeModal').classList.remove('hidden');
+    });
+
+    function cancelAudioMode() {
+      pendingAudioFile = null;
+      document.getElementById('audioModeModal').classList.add('hidden');
+    }
+
+    async function confirmAudioMode(mode) {
+      const file = pendingAudioFile;
+      pendingAudioFile = null;
+      document.getElementById('audioModeModal').classList.add('hidden');
+      if (!file) return;
 
       emptyState.style.display = 'none';
       addUserBubble('🎙 ' + file.name);
@@ -294,6 +353,7 @@
       try {
         const fd = new FormData();
         fd.append('file', file);
+        fd.append('mode', mode);
         const resp = await fetch('/api/analyze-audio', { method: 'POST', body: fd });
         const startData = await resp.json();
         if (startData.error) {
@@ -333,9 +393,14 @@
           if (data.status === 'error') {
             addErrorBubble(data.error || 'Errore durante l\'analisi.');
           } else {
-            addAnalysisBubble(data.filename, data.transcript, data.answer);
-            history.push({ role: 'user', content: `[Analisi call: ${data.filename}]\n\nTrascrizione:\n${data.transcript}` });
-            history.push({ role: 'assistant', content: data.answer });
+            addAnalysisBubble(data.filename, data.transcript, data.answer, data.mode);
+            if (data.mode === 'trascrizione') {
+              history.push({ role: 'user', content: `[Trascrizione call: ${data.filename}]` });
+              history.push({ role: 'assistant', content: data.transcript });
+            } else {
+              history.push({ role: 'user', content: `[Analisi call: ${data.filename}]\n\nTrascrizione:\n${data.transcript}` });
+              history.push({ role: 'assistant', content: data.answer });
+            }
           }
         } catch {
           removeTypingIndicator();
@@ -345,7 +410,7 @@
         input.focus();
       };
       setTimeout(poll, 2000);
-    });
+    }
 
     function openCoachingModal() {
       document.getElementById('coachingModal').classList.remove('hidden');
