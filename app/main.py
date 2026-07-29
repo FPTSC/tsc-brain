@@ -1018,7 +1018,7 @@ async def _run_we_sync(job_id: str, since_date: str | None, limit: int | None = 
         for i, rec in enumerate(recordings):
             rec_id = str(rec["recording_id"])
             title  = rec.get("title") or f"Call {rec_id}"
-            date   = (rec.get("started_at") or "")[:10]
+            date   = (rec.get("recording_start_time") or rec.get("scheduled_start_time") or rec.get("created_at") or "")[:10]
 
             _jobs[job_id]["progress"] = f"[{i+1}/{total}] {title[:55]}"
 
@@ -1089,13 +1089,13 @@ async def _run_we_sync(job_id: str, since_date: str | None, limit: int | None = 
 
 
 @app.get("/api/we/recordings-sample")
-async def we_recordings_sample(request: Request, _=Depends(_check_we_key)):
-    """Returns raw fields of the first 3 WE recordings from Fathom, for debugging coach detection."""
+async def we_recordings_sample(request: Request, limit: int = 3, _=Depends(_check_we_key)):
+    """Returns raw fields of the first N WE recordings from Fathom, for debugging."""
     from app.wonder_empire import fetch_recordings
     if not WE_FATHOM_API_KEY:
         return JSONResponse({"error": "WE_FATHOM_API_KEY non configurata"})
     recs = await asyncio.to_thread(fetch_recordings, WE_FATHOM_API_KEY, None)
-    return JSONResponse(recs[:3])
+    return JSONResponse(recs[:limit])
 
 
 @app.get("/api/we/test")

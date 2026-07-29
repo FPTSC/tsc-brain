@@ -201,7 +201,7 @@ def fetch_recordings(api_key: str, since_date: str | None = None) -> list[dict]:
         body = r.json()
         items = body.get("items", [])
         if since_date:
-            items = [i for i in items if (i.get("started_at") or "") >= since_date]
+            items = [i for i in items if (i.get("recording_start_time") or i.get("scheduled_start_time") or i.get("created_at") or "") >= since_date]
         recs.extend(items)
         cursor = body.get("next_cursor")
         if not cursor or (since_date and len(items) < 50):
