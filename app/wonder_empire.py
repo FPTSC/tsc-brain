@@ -6,6 +6,7 @@ and saves results to Supabase.
 
 import json
 import re
+import time
 import requests
 
 FATHOM_BASE = "https://api.fathom.ai/external/v1"
@@ -184,6 +185,19 @@ TRASCRIZIONE:
 
 # ── Fathom helpers ───────────────────────────────────────────────────────────
 
+def _fathom_get(url: str, api_key: str, params: dict, max_retries: int = 5):
+    """GET with 429 retry/backoff (respects Retry-After when present)."""
+    for attempt in range(max_retries + 1):
+        r = requests.get(url, headers={"X-Api-Key": api_key}, params=params, timeout=30)
+        if r.status_code != 429:
+            r.raise_for_status()
+            return r
+        if attempt == max_retries:
+            r.raise_for_status()
+        wait = float(r.headers.get("Retry-After", 0)) or (2 ** attempt) * 2
+        time.sleep(wait)
+
+
 def fetch_recordings(api_key: str, since_date: str | None = None) -> list[dict]:
     """List all WE recordings from Fathom, newest first."""
     recs, cursor = [], None
@@ -191,13 +205,7 @@ def fetch_recordings(api_key: str, since_date: str | None = None) -> list[dict]:
         params = {"limit": 50}
         if cursor:
             params["cursor"] = cursor
-        r = requests.get(
-            f"{FATHOM_BASE}/meetings",
-            headers={"X-Api-Key": api_key},
-            params=params,
-            timeout=30,
-        )
-        r.raise_for_status()
+        r = _fathom_get(f"{FATHOM_BASE}/meetings", api_key, params)
         body = r.json()
         items = body.get("items", [])
         if since_date:
@@ -206,6 +214,7 @@ def fetch_recordings(api_key: str, since_date: str | None = None) -> list[dict]:
         cursor = body.get("next_cursor")
         if not cursor or (since_date and len(items) < 50):
             break
+        time.sleep(0.4)
     return recs
 
 
@@ -214,11 +223,13 @@ def fetch_transcript(api_key: str, recording_id: str) -> tuple[str, list[str]]:
     Returns (formatted_transcript, speaker_names).
     Speaker names are used for coach detection.
     """
-    r = requests.get(
-        f"{FATHOM_BASE}/recordings/{recording_id}/transcript",
-        headers={"X-Api-Key": api_key},
-        timeout=30,
-    )
+    url = f"{FATHOM_BASE}/recordings/{recording_id}/transcript"
+    for attempt in range(6):
+        r = requests.get(url, headers={"X-Api-Key": api_key}, timeout=30)
+        if r.status_code != 429:
+            break
+        wait = float(r.headers.get("Retry-After", 0)) or (2 ** attempt) * 2
+        time.sleep(wait)
     if r.status_code != 200:
         return "", []
 
