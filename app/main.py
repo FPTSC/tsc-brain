@@ -990,7 +990,7 @@ def _check_we_key(request: Request):
 async def _run_we_sync(job_id: str, since_date: str | None, limit: int | None = None):
     from app.wonder_empire import (
         fetch_recordings, fetch_transcript, classify_call,
-        analyze_call, get_existing_ids, save_to_supabase,
+        analyze_call, get_existing_ids, save_to_supabase, is_out_of_credits,
     )
 
     if not WE_FATHOM_API_KEY:
@@ -1013,7 +1013,8 @@ async def _run_we_sync(job_id: str, since_date: str | None, limit: int | None = 
 
         existing_ids = await asyncio.to_thread(get_existing_ids, WE_SUPABASE_URL, WE_SUPABASE_KEY)
 
-        processed, skipped, errors = [], 0, []
+        processed, skipped, no_transcript, errors = [], 0, 0, []
+        stopped_reason, pending = None, 0
 
         for i, rec in enumerate(recordings):
             rec_id = str(rec["recording_id"])
@@ -1031,7 +1032,7 @@ async def _run_we_sync(job_id: str, since_date: str | None, limit: int | None = 
                     fetch_transcript, WE_FATHOM_API_KEY, rec_id
                 )
                 if not transcript.strip():
-                    skipped += 1
+                    no_transcript += 1
                     continue
 
                 meta = await asyncio.to_thread(
@@ -1072,6 +1073,13 @@ async def _run_we_sync(job_id: str, since_date: str | None, limit: int | None = 
                     errors.append({"id": rec_id, "title": title, "error": save_err})
 
             except Exception as e:
+                if is_out_of_credits(e):
+                    # Inutile proseguire: ogni call successiva fallirebbe. Le call non
+                    # ancora in archivio verranno riprese alla prossima sync.
+                    pending = sum(1 for r in recordings[i:] if str(r["recording_id"]) not in existing_ids)
+                    stopped_reason = "crediti_esauriti"
+                    print(f"[we-sync] crediti Anthropic esauriti: stop, {pending} call in coda", flush=True)
+                    break
                 print(f"[we-sync] exception on {rec_id} ({title!r}): {type(e).__name__}: {e}", flush=True)
                 errors.append({"id": rec_id, "title": title, "error": str(e)})
 
@@ -1080,8 +1088,11 @@ async def _run_we_sync(job_id: str, since_date: str | None, limit: int | None = 
         _jobs[job_id].update({
             "status": "done",
             "processed": processed,
-            "skipped": skipped,
+            "skipped": skipped,              # già presenti in archivio
+            "no_transcript": no_transcript,  # senza trascrizione: riprovate alla prossima sync
             "errors": errors,
+            "stopped_reason": stopped_reason,
+            "pending": pending,              # call rimaste in coda se la sync si è fermata
         })
 
     except Exception as e:

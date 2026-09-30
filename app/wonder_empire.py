@@ -369,17 +369,38 @@ def _sb_headers(service_key: str) -> dict:
     }
 
 
+_SB_PAGE = 1000  # massimo di righe che Supabase restituisce per singola richiesta
+
+
 def get_existing_ids(supabase_url: str, service_key: str) -> set[str]:
-    """Return set of fathom_call_ids already in Supabase."""
-    r = requests.get(
-        f"{supabase_url}/rest/v1/call_analyses",
-        headers={**_sb_headers(service_key), "Prefer": ""},
-        params={"select": "fathom_call_id"},
-        timeout=15,
-    )
-    if r.status_code != 200:
-        return set()
-    return {row["fathom_call_id"] for row in r.json()}
+    """Return set of fathom_call_ids already in Supabase.
+
+    Legge a pagine: senza paginazione Supabase si ferma a 1000 righe e le call
+    oltre quel limite verrebbero rianalizzate a ogni sync, consumando crediti.
+    Se la lettura fallisce solleva un'eccezione invece di restituire un insieme
+    vuoto, che farebbe rianalizzare l'intero archivio.
+    """
+    ids: set[str] = set()
+    offset = 0
+    while True:
+        r = requests.get(
+            f"{supabase_url}/rest/v1/call_analyses",
+            headers={**_sb_headers(service_key), "Prefer": "", "Range": f"{offset}-{offset + _SB_PAGE - 1}"},
+            params={"select": "fathom_call_id", "order": "fathom_call_id.asc"},
+            timeout=15,
+        )
+        if r.status_code not in (200, 206):
+            raise RuntimeError(f"Lettura dell'archivio call non riuscita (HTTP {r.status_code}): {r.text[:200]}")
+        rows = r.json()
+        ids.update(str(row["fathom_call_id"]) for row in rows)
+        if len(rows) < _SB_PAGE:
+            return ids
+        offset += _SB_PAGE
+
+
+def is_out_of_credits(exc: Exception) -> bool:
+    """True se Anthropic ha rifiutato la richiesta perché il credito API è esaurito."""
+    return "credit balance" in str(exc).lower()
 
 
 def save_to_supabase(
