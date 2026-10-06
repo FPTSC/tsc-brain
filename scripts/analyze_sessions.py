@@ -19,8 +19,12 @@ load_dotenv(Path(__file__).parent.parent / ".env")
 
 FATHOM_API_KEY  = os.environ["FATHOM_API_KEY"]
 ANTHROPIC_KEY   = os.environ["ANTHROPIC_API_KEY"]
+FATHOM_TEAM_NAME = os.environ.get("FATHOM_TEAM_NAME", "")
 FATHOM_BASE_URL = "https://api.fathom.ai/external/v1"
 HEADERS         = {"X-Api-Key": FATHOM_API_KEY}
+
+if not FATHOM_TEAM_NAME:
+    print("ATTENZIONE: FATHOM_TEAM_NAME non impostata — verranno lette TUTTE le call visibili alla API key.")
 
 
 def list_all_recordings():
@@ -29,6 +33,8 @@ def list_all_recordings():
         params = {"limit": 50}
         if cursor:
             params["cursor"] = cursor
+        if FATHOM_TEAM_NAME:
+            params["teams[]"] = FATHOM_TEAM_NAME
         r = requests.get(f"{FATHOM_BASE_URL}/meetings", headers=HEADERS, params=params)
         r.raise_for_status()
         body = r.json()

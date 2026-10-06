@@ -1,15 +1,22 @@
 import logging
 import requests
 
-from config.settings import FATHOM_API_KEY, FATHOM_BASE_URL
+from config.settings import FATHOM_API_KEY, FATHOM_BASE_URL, FATHOM_TEAM_NAME
 
 logger = logging.getLogger(__name__)
 
 _HEADERS = {"X-Api-Key": FATHOM_API_KEY}
 
+if not FATHOM_TEAM_NAME:
+    logger.warning(
+        "FATHOM_TEAM_NAME non configurato: l'ingestion pescherà TUTTE le call "
+        "visibili alla API key, incluse quelle di altri team Fathom a cui "
+        "l'account e' stato eventualmente aggiunto."
+    )
+
 
 def list_new_recordings(processed_ids: set[str]) -> list[dict]:
-    """Returns unprocessed recordings from Fathom (all pages)."""
+    """Returns unprocessed recordings from Fathom (all pages), filtrate per team se configurato."""
     recordings = []
     cursor = None
 
@@ -17,6 +24,8 @@ def list_new_recordings(processed_ids: set[str]) -> list[dict]:
         params = {"limit": 50}
         if cursor:
             params["cursor"] = cursor
+        if FATHOM_TEAM_NAME:
+            params["teams[]"] = FATHOM_TEAM_NAME
 
         resp = requests.get(f"{FATHOM_BASE_URL}/meetings", headers=_HEADERS, params=params)
         resp.raise_for_status()

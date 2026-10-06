@@ -19,7 +19,14 @@
       "Bash(git commit *)",
       "Bash(git config *)",
       "Bash(railway *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(uvicorn app:app *)",
+      "Bash(pkill -f \"uvicorn app.main\")",
+      "Bash(netstat -ano)",
+      "Bash(awk '{print $5}')",
+      "Bash(xargs -I{} taskkill /PID {} /F)",
+      "PowerShell(Get-NetTCPConnection *)",
+      "Bash(git revert *)"
     ]
   }
 }

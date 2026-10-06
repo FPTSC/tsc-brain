@@ -8,6 +8,10 @@ CLAUDE_MODEL = "claude-sonnet-4-6"
 
 FATHOM_API_KEY = os.environ.get("FATHOM_API_KEY", "")
 FATHOM_BASE_URL = "https://api.fathom.ai/external/v1"
+# Nome esatto del team TSC su Fathom (Settings > Teams). Se vuoto, l'ingestion
+# pesca TUTTE le call visibili alla API key, incluse quelle di altri team a cui
+# l'account e' stato aggiunto — va sempre valorizzato in produzione.
+FATHOM_TEAM_NAME = os.environ.get("FATHOM_TEAM_NAME", "")
 
 VOYAGE_API_KEY = os.environ.get("VOYAGE_API_KEY", "")
 

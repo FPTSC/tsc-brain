@@ -21,7 +21,7 @@ import anthropic
 from groq import Groq
 
 from config.settings import ANTHROPIC_API_KEY, CLAUDE_MODEL, GROQ_API_KEY, FATHOM_API_KEY, \
-    WE_FATHOM_API_KEY, WE_API_KEY, WE_SUPABASE_URL, WE_SUPABASE_KEY
+    FATHOM_TEAM_NAME, WE_FATHOM_API_KEY, WE_API_KEY, WE_SUPABASE_URL, WE_SUPABASE_KEY
 from src.vectorstore.client import search, count
 from src.processor.extractor import extract_call_data, extract_from_coaching
 from src.notion.client import save_call
@@ -840,6 +840,8 @@ async def _run_sessions_analysis(job_id: str):
             params = {"limit": 50}
             if cursor:
                 params["cursor"] = cursor
+            if FATHOM_TEAM_NAME:
+                params["teams[]"] = FATHOM_TEAM_NAME
             r = _req.get(
                 f"https://api.fathom.ai/external/v1/meetings",
                 headers={"X-Api-Key": FATHOM_API_KEY}, params=params,

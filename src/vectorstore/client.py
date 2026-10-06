@@ -79,6 +79,20 @@ def index_pages_batch(pages: list) -> None:
     logger.info(f"Batch indicizzato: {len(pages)} documenti")
 
 
+def get_indexed_versions(ids: list[str]) -> dict[str, str]:
+    """Returns {page_id: last_edited} for pages already in the index."""
+    if not _CHROMADB_OK or not ids:
+        return {}
+    try:
+        res = _get_collection().get(ids=ids, include=["metadatas"])
+    except Exception:
+        return {}
+    return {
+        pid: (meta or {}).get("last_edited", "")
+        for pid, meta in zip(res["ids"], res["metadatas"])
+    }
+
+
 def search(query: str, n_results: int = 5) -> list[dict]:
     if not _CHROMADB_OK or not _VOYAGE_OK:
         return []

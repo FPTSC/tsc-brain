@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 from notion_client import Client
 from config.settings import NOTION_TOKEN, NOTION_DATABASE_ID
-from src.vectorstore.client import index_pages_batch, count
+from src.vectorstore.client import index_pages_batch, count, get_indexed_versions
 
 _notion = Client(auth=NOTION_TOKEN)
 
@@ -84,6 +84,17 @@ def run():
 
     logger.info(f"Trovate {len(pages)} pagine. Lettura contenuti...")
 
+    # Re-embed only new or edited pages: every embedding is a paid Voyage call
+    indexed = get_indexed_versions([p["id"] for p in pages])
+    pages = [
+        p for p in pages
+        if not p.get("last_edited_time") or indexed.get(p["id"]) != p["last_edited_time"]
+    ]
+    if not pages:
+        logger.info(f"Nessuna pagina nuova o modificata. Totale vettori: {count()}")
+        return
+    logger.info(f"{len(pages)} pagine nuove o modificate da indicizzare.")
+
     batch = []
     for page in pages:
         props = page["properties"]
@@ -98,6 +109,7 @@ def run():
             "categoria": categoria,
             "tipo_sessione": tipo,
             "url": page.get("url", ""),
+            "last_edited": page.get("last_edited_time", ""),
         }
         batch.append((page["id"], text, metadata))
         logger.info(f"  ✓ {titolo or page['id']}")
